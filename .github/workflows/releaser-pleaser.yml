@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   releaser-pleaser:
-    if: github.repository == 'Contentways/poweradmin-go'
+    if: github.repository == 'contentways/poweradmin-go'
     runs-on: ubuntu-latest
     steps:
       - name: releaser-pleaser
