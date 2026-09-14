@@ -1,5 +1,15 @@
 # Changelog
 
+## [v3.0.0](https://github.com/contentways/poweradmin-go/releases/tag/v3.0.0)
+
+### Features
+
+- **BREAKING**: migrate module path to github.com/contentways/poweradmin-go/v3
+
+### Bug Fixes
+
+- correct repository case in releaser-pleaser workflow
+
 ## [v3.0.1](https://github.com/contentways/poweradmin-go/releases/tag/v3.0.1)
 
 ### Bug Fixes
