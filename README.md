@@ -4,7 +4,7 @@ A Go client library for the [Poweradmin](https://www.poweradmin.org/) DNS
 management API (v2).
 
 ```go
-import "contentways.dev/contentways/poweradmin-go/poweradmin"
+import "github.com/contentways/poweradmin-go/poweradmin"
 ```
 
 ## Version compatibility
@@ -23,7 +23,7 @@ against Poweradmin older than 4.3.0, and 1.1.x against 4.3.0 and newer.
 ## Installation
 
 ```sh
-go get contentways.dev/contentways/poweradmin-go
+go get github.com/contentways/poweradmin-go
 ```
 
 Requires Go 1.26 or newer.
@@ -38,7 +38,7 @@ import (
     "fmt"
     "log"
 
-    "contentways.dev/contentways/poweradmin-go/poweradmin"
+    "github.com/contentways/poweradmin-go/poweradmin"
 )
 
 func main() {
