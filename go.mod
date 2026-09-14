@@ -1,3 +1,3 @@
-module contentways.dev/contentways/poweradmin-go/v2
+module github.com/contentways/poweradmin-go/v3
 
 go 1.26.3

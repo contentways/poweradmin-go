@@ -1,4 +1,4 @@
-module contentways.dev/contentways/poweradmin-go/tools
+module github.com/contentways/poweradmin-go/tools
 
 go 1.24.0
 
