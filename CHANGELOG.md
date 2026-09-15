@@ -1,5 +1,15 @@
 # Changelog
 
+## [v3.1.0](https://github.com/contentways/poweradmin-go/releases/tag/v3.1.0)
+
+### Features
+
+- add zone metadata endpoints (list, get, set, delete)
+
+### Bug Fixes
+
+- remove dead nil-check in delete-record command
+
 ## [v3.0.0](https://github.com/contentways/poweradmin-go/releases/tag/v3.0.0)
 
 ### Features
