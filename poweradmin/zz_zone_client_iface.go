@@ -39,4 +39,15 @@ type IZoneClient interface {
 	GetDNSSEC(ctx context.Context, id int) (*ZoneDNSSEC, *Response, error)
 	// SetDNSSEC enables or disables DNSSEC for the zone with the given ID.
 	SetDNSSEC(ctx context.Context, id int, enabled bool) (*ZoneDNSSEC, *Response, error)
+	// ListMetadata returns all metadata entries for the zone with the given ID.
+	ListMetadata(ctx context.Context, zoneID int) ([]*ZoneMetadata, *Response, error)
+	// GetMetadata returns the values stored under a specific metadata kind
+	// (e.g. ALLOW-AXFR-FROM) for the zone with the given ID.
+	GetMetadata(ctx context.Context, zoneID int, kind string) (*ZoneMetadata, *Response, error)
+	// SetMetadata creates or replaces all values for a metadata kind on the zone
+	// with the given ID.
+	SetMetadata(ctx context.Context, zoneID int, kind string, values []string) (*Response, error)
+	// DeleteMetadata deletes all values for a metadata kind on the zone with the
+	// given ID.
+	DeleteMetadata(ctx context.Context, zoneID int, kind string) (*Response, error)
 }

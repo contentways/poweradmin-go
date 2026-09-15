@@ -91,9 +91,6 @@ func main() {
 		if len(args) < 2 {
 			log.Fatal("usage: delete-record <zone-name> <record-id>")
 		}
-		if err != nil {
-			log.Fatalf("invalid record id: %v", err)
-		}
 		deleteRecord(ctx, client, args[0], args[1])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", cmd)
