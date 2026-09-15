@@ -64,6 +64,13 @@ type DSRecord struct {
 	Digest     string
 }
 
+// ZoneMetadata represents the values stored under a single metadata kind
+// for a zone (e.g. ALLOW-AXFR-FROM, TSIG-ALLOW-AXFR).
+type ZoneMetadata struct {
+	Kind   string
+	Values []string
+}
+
 // ZoneClient provides access to the zone-related Poweradmin API endpoints.
 type ZoneClient struct {
 	client *Client
@@ -245,4 +252,42 @@ func (z *ZoneClient) SetDNSSEC(ctx context.Context, id int, enabled bool) (*Zone
 	}
 	dnssec := ZoneDNSSECFromSchema(result)
 	return &dnssec, resp, nil
+}
+
+// ListMetadata returns all metadata entries for the zone with the given ID.
+func (z *ZoneClient) ListMetadata(ctx context.Context, zoneID int) ([]*ZoneMetadata, *Response, error) {
+	var result schema.ZoneMetadataListResponse
+	resp, err := z.client.get(ctx, fmt.Sprintf("zones/%d/metadata", zoneID), &result)
+	if err != nil {
+		return nil, resp, err
+	}
+	metadata := make([]*ZoneMetadata, len(result.Metadata))
+	for i, m := range result.Metadata {
+		metadata[i] = &ZoneMetadata{Kind: m.Kind, Values: m.Values}
+	}
+	return metadata, resp, nil
+}
+
+// GetMetadata returns the values stored under a specific metadata kind
+// (e.g. ALLOW-AXFR-FROM) for the zone with the given ID.
+func (z *ZoneClient) GetMetadata(ctx context.Context, zoneID int, kind string) (*ZoneMetadata, *Response, error) {
+	var result schema.ZoneMetadataResponse
+	resp, err := z.client.get(ctx, fmt.Sprintf("zones/%d/metadata/%s", zoneID, kind), &result)
+	if err != nil {
+		return nil, resp, err
+	}
+	return &ZoneMetadata{Kind: result.Kind, Values: result.Values}, resp, nil
+}
+
+// SetMetadata creates or replaces all values for a metadata kind on the zone
+// with the given ID.
+func (z *ZoneClient) SetMetadata(ctx context.Context, zoneID int, kind string, values []string) (*Response, error) {
+	req := schema.ZoneMetadataSetRequest{Values: values}
+	return z.client.put(ctx, fmt.Sprintf("zones/%d/metadata/%s", zoneID, kind), req, nil)
+}
+
+// DeleteMetadata deletes all values for a metadata kind on the zone with the
+// given ID.
+func (z *ZoneClient) DeleteMetadata(ctx context.Context, zoneID int, kind string) (*Response, error) {
+	return z.client.delete(ctx, fmt.Sprintf("zones/%d/metadata/%s", zoneID, kind))
 }

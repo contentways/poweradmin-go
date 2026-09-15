@@ -109,6 +109,26 @@ type ZoneDNSSECSetRequest struct {
 	Enabled bool `json:"enabled"`
 }
 
+// ── Zone Metadata ────────────────────────────────────────────────────────────
+
+type ZoneMetadataEntry struct {
+	Kind   string   `json:"kind"`
+	Values []string `json:"values"`
+}
+
+type ZoneMetadataListResponse struct {
+	Metadata []ZoneMetadataEntry `json:"metadata"`
+}
+
+type ZoneMetadataResponse struct {
+	Kind   string   `json:"kind"`
+	Values []string `json:"values"`
+}
+
+type ZoneMetadataSetRequest struct {
+	Values []string `json:"values"`
+}
+
 // ── Record ───────────────────────────────────────────────────────────────────
 
 type Record struct {

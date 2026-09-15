@@ -400,3 +400,141 @@ func TestZoneSetDNSSECError(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestZoneListMetadata(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %s, want GET", r.Method)
+		}
+		if r.URL.Path != "/api/v2/zones/5/metadata" {
+			t.Errorf("path = %s, want /api/v2/zones/5/metadata", r.URL.Path)
+		}
+		writeEnvelope(t, w, http.StatusOK, map[string]any{
+			"metadata": []map[string]any{
+				{"kind": "ALLOW-AXFR-FROM", "values": []string{"192.0.2.10", "AUTO-NS"}},
+			},
+		})
+	})
+	metadata, resp, err := client.Zone.ListMetadata(context.Background(), 5)
+	if err != nil {
+		t.Fatalf("ListMetadata: %v", err)
+	}
+	if resp == nil || resp.StatusCode != http.StatusOK {
+		t.Errorf("response status = %v", resp)
+	}
+	if len(metadata) != 1 {
+		t.Fatalf("metadata len = %d, want 1", len(metadata))
+	}
+	if metadata[0].Kind != "ALLOW-AXFR-FROM" {
+		t.Errorf("kind = %s, want ALLOW-AXFR-FROM", metadata[0].Kind)
+	}
+	if len(metadata[0].Values) != 2 || metadata[0].Values[0] != "192.0.2.10" {
+		t.Errorf("values = %v", metadata[0].Values)
+	}
+}
+
+func TestZoneGetMetadata(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %s, want GET", r.Method)
+		}
+		if r.URL.Path != "/api/v2/zones/5/metadata/ALLOW-AXFR-FROM" {
+			t.Errorf("path = %s, want /api/v2/zones/5/metadata/ALLOW-AXFR-FROM", r.URL.Path)
+		}
+		writeEnvelope(t, w, http.StatusOK, map[string]any{
+			"kind":   "ALLOW-AXFR-FROM",
+			"values": []string{"192.0.2.10", "AUTO-NS"},
+		})
+	})
+	m, resp, err := client.Zone.GetMetadata(context.Background(), 5, "ALLOW-AXFR-FROM")
+	if err != nil {
+		t.Fatalf("GetMetadata: %v", err)
+	}
+	if resp == nil || resp.StatusCode != http.StatusOK {
+		t.Errorf("response status = %v", resp)
+	}
+	if m.Kind != "ALLOW-AXFR-FROM" {
+		t.Errorf("kind = %s, want ALLOW-AXFR-FROM", m.Kind)
+	}
+	if len(m.Values) != 2 {
+		t.Errorf("values len = %d, want 2", len(m.Values))
+	}
+}
+
+func TestZoneGetMetadataNotFound(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeError(t, w, http.StatusNotFound, "zone or metadata kind not found")
+	})
+	_, _, err := client.Zone.GetMetadata(context.Background(), 99, "ALLOW-AXFR-FROM")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !IsNotFound(err) {
+		t.Errorf("IsNotFound = false, want true (err=%v)", err)
+	}
+}
+
+func TestZoneSetMetadata(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Errorf("method = %s, want PUT", r.Method)
+		}
+		if r.URL.Path != "/api/v2/zones/5/metadata/ALLOW-AXFR-FROM" {
+			t.Errorf("path = %s, want /api/v2/zones/5/metadata/ALLOW-AXFR-FROM", r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		var req map[string]any
+		_ = json.Unmarshal(body, &req)
+		values, _ := req["values"].([]any)
+		if len(values) != 2 {
+			t.Errorf("values = %v, want 2 entries", req["values"])
+		}
+		writeEnvelope(t, w, http.StatusOK, nil)
+	})
+	resp, err := client.Zone.SetMetadata(context.Background(), 5, "ALLOW-AXFR-FROM", []string{"192.0.2.10", "AUTO-NS"})
+	if err != nil {
+		t.Fatalf("SetMetadata: %v", err)
+	}
+	if resp == nil || resp.StatusCode != http.StatusOK {
+		t.Errorf("response status = %v", resp)
+	}
+}
+
+func TestZoneSetMetadataError(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeError(t, w, http.StatusForbidden, "forbidden or read-only metadata kind")
+	})
+	_, err := client.Zone.SetMetadata(context.Background(), 5, "ALLOW-AXFR-FROM", []string{"192.0.2.10"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestZoneDeleteMetadata(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Errorf("method = %s, want DELETE", r.Method)
+		}
+		if r.URL.Path != "/api/v2/zones/5/metadata/ALLOW-AXFR-FROM" {
+			t.Errorf("path = %s, want /api/v2/zones/5/metadata/ALLOW-AXFR-FROM", r.URL.Path)
+		}
+		writeEnvelope(t, w, http.StatusOK, nil)
+	})
+	resp, err := client.Zone.DeleteMetadata(context.Background(), 5, "ALLOW-AXFR-FROM")
+	if err != nil {
+		t.Fatalf("DeleteMetadata: %v", err)
+	}
+	if resp == nil || resp.StatusCode != http.StatusOK {
+		t.Errorf("response status = %v", resp)
+	}
+}
+
+func TestZoneDeleteMetadataError(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeError(t, w, http.StatusForbidden, "forbidden or read-only metadata kind")
+	})
+	_, err := client.Zone.DeleteMetadata(context.Background(), 5, "ALLOW-AXFR-FROM")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
