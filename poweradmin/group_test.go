@@ -128,7 +128,7 @@ func TestGroupUpdate(t *testing.T) {
 		})
 	})
 	group, _, err := client.Group.Update(context.Background(), 3, GroupUpdateOpts{
-		Name: Ptr("ops-updated"), Description: Ptr(""), PermTemplID: Ptr(4),
+		Name: new("ops-updated"), Description: new(""), PermTemplID: new(4),
 	})
 	if err != nil {
 		t.Fatalf("Update: %v", err)

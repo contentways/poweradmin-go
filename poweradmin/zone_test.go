@@ -179,7 +179,7 @@ func TestZoneCreateWireFields(t *testing.T) {
 			opts: ZoneCreateOpts{
 				Name: "example.org", Type: ZoneTypeSlave, Masters: "192.0.2.1:5300",
 				Account: "acme", Description: "prod", TemplateID: 3, EnableDNSSEC: true,
-				OwnerUserID: Ptr(7), GroupIDs: []int{2, 5},
+				OwnerUserID: new(7), GroupIDs: []int{2, 5},
 			},
 			want: map[string]any{
 				"name": "example.org", "type": "SLAVE", "master": "192.0.2.1:5300",
@@ -221,7 +221,7 @@ func TestZoneCreateOwnerValidation(t *testing.T) {
 		t.Error("no request expected for invalid options")
 	})
 	for name, opts := range map[string]ZoneCreateOpts{
-		"owner and no owner":      {Name: "a.com", OwnerUserID: Ptr(1), WithoutUserOwner: true, GroupIDs: []int{1}},
+		"owner and no owner":      {Name: "a.com", OwnerUserID: new(1), WithoutUserOwner: true, GroupIDs: []int{1}},
 		"no owner without groups": {Name: "a.com", WithoutUserOwner: true},
 	} {
 		t.Run(name, func(t *testing.T) {

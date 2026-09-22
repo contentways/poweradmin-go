@@ -158,10 +158,10 @@ func TestRecordUpdate(t *testing.T) {
 		})
 	})
 	rec, _, err := client.Record.Update(context.Background(), 5, "rec-99", RecordUpdateOpts{
-		Name:    Ptr("www.example.com"),
-		Type:    Ptr("A"),
-		Content: Ptr("5.6.7.8"),
-		TTL:     Ptr(600),
+		Name:    new("www.example.com"),
+		Type:    new("A"),
+		Content: new("5.6.7.8"),
+		TTL:     new(600),
 	})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
@@ -232,8 +232,8 @@ func TestRecordUpdateSendsOnlySetFields(t *testing.T) {
 		writeEnvelope(t, w, http.StatusOK, map[string]any{"record": map[string]any{"id": 99, "content": "192.0.2.10"}})
 	})
 	if _, _, err := client.Record.Update(context.Background(), 5, "99", RecordUpdateOpts{
-		Content:  Ptr("192.0.2.10"),
-		Disabled: Ptr(false),
+		Content:  new("192.0.2.10"),
+		Disabled: new(false),
 	}); err != nil {
 		t.Fatalf("Update: %v", err)
 	}

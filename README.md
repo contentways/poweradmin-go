@@ -29,8 +29,8 @@ Breaking changes:
 - Imports move from `.../poweradmin-go/v3/poweradmin` to
   `.../poweradmin-go/v4/poweradmin`.
 - `UserUpdateOpts`, `GroupUpdateOpts` and `RecordUpdateOpts` use pointer
-  fields; only non-nil fields are sent. Build them with `poweradmin.Ptr`:
-  `RecordUpdateOpts{Content: poweradmin.Ptr("192.0.2.10")}`.
+  fields; only non-nil fields are sent. Build them with Go 1.26's `new(expr)`:
+  `RecordUpdateOpts{Content: new("192.0.2.10")}`.
 - `UserClient.Delete(ctx, id, UserDeleteOpts)` returns the number of
   transferred zones. Set `TransferToUserID` when the user still owns zones.
 - `ZoneCreateOpts.Template` (string) is now `TemplateID` (int, 0 = none).

@@ -119,7 +119,7 @@ func TestUserUpdate(t *testing.T) {
 		}
 	})
 	email := "newalice@example.com"
-	user, _, err := client.User.Update(context.Background(), 5, UserUpdateOpts{Email: Ptr(email), Active: Ptr(true)})
+	user, _, err := client.User.Update(context.Background(), 5, UserUpdateOpts{Email: new(email), Active: new(true)})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestUserDeleteTransfersZones(t *testing.T) {
 		decodeBody(t, r, &got)
 		writeEnvelope(t, w, http.StatusOK, map[string]any{"zones_affected": 3})
 	})
-	n, _, err := client.User.Delete(context.Background(), 5, UserDeleteOpts{TransferToUserID: Ptr(2)})
+	n, _, err := client.User.Delete(context.Background(), 5, UserDeleteOpts{TransferToUserID: new(2)})
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
