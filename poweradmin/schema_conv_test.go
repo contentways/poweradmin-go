@@ -11,14 +11,13 @@ import (
 
 func TestZoneRoundtrip(t *testing.T) {
 	in := schema.Zone{
-		ID:           7,
-		Name:         "example.com",
-		Type:         "MASTER",
-		Masters:      "1.2.3.4",
-		Account:      "acct",
-		Description:  "desc",
-		SOASerial:    42,
-		DNSSECSigned: true,
+		ID:          7,
+		Name:        "example.com",
+		Type:        "MASTER",
+		Masters:     "1.2.3.4",
+		Account:     "acct",
+		Description: "desc",
+		CreatedAt:   "2026-01-01 12:00:00",
 	}
 	domain := ZoneFromSchema(in)
 	if domain.Type != ZoneTypeMaster {
@@ -70,5 +69,18 @@ func TestGroupAndPermissionConv(t *testing.T) {
 	p := schema.Permission{ID: 9, Name: "zone_master_add", Descr: "Add master zones"}
 	if got := PermissionFromSchema(p); got.ID != 9 || got.Name != "zone_master_add" {
 		t.Errorf("Permission conv wrong: %+v", got)
+	}
+}
+
+func TestGroupMemberAndZoneFromSchema(t *testing.T) {
+	m := GroupMemberFromSchema(schema.GroupMember{
+		UserID: 1, Username: "admin", Fullname: "Administrator", Email: "admin@example.com", JoinedAt: "2026-01-01",
+	})
+	if m != (GroupMember{UserID: 1, Username: "admin", Fullname: "Administrator", Email: "admin@example.com", JoinedAt: "2026-01-01"}) {
+		t.Errorf("member = %+v", m)
+	}
+	z := GroupZoneFromSchema(schema.GroupZone{ZoneID: 2, ZoneName: "example.com", ZoneType: "MASTER", CreatedAt: "2026-01-02"})
+	if z != (GroupZone{ZoneID: 2, ZoneName: "example.com", ZoneType: "MASTER", CreatedAt: "2026-01-02"}) {
+		t.Errorf("zone = %+v", z)
 	}
 }

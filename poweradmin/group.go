@@ -24,14 +24,17 @@ type Group struct {
 type GroupMember struct {
 	UserID   int
 	Username string
+	Fullname string
+	Email    string
 	JoinedAt string
 }
 
 // GroupZone represents a zone associated with a group.
 type GroupZone struct {
-	ZoneID   int
-	ZoneName string
-	ZoneType string
+	ZoneID    int
+	ZoneName  string
+	ZoneType  string
+	CreatedAt string
 }
 
 // GroupCreateOpts configures a group creation request.

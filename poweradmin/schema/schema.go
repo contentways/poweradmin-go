@@ -54,15 +54,13 @@ type Pagination struct {
 // ── Zone ─────────────────────────────────────────────────────────────────────
 
 type Zone struct {
-	ID           int    `json:"id,omitempty"`
-	Name         string `json:"name"`
-	Type         string `json:"type"`
-	Masters      string `json:"masters,omitempty"`
-	Account      string `json:"account,omitempty"`
-	Description  string `json:"description,omitempty"`
-	SOASerial    int    `json:"soa_serial,omitempty"`
-	DNSSECSigned bool   `json:"dnssec_signed,omitempty"`
-	CreatedAt    string `json:"created_at,omitempty"`
+	ID          int    `json:"id,omitempty"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Masters     string `json:"masters,omitempty"`
+	Account     string `json:"account,omitempty"`
+	Description string `json:"description,omitempty"`
+	CreatedAt   string `json:"created_at,omitempty"`
 }
 
 type ZoneResponse struct {
@@ -156,7 +154,7 @@ type ZoneMetadataSetRequest struct {
 
 type Record struct {
 	ID       RecordID `json:"id,omitempty"`
-	ZoneID   int64    `json:"zone_id,omitempty"`
+	ZoneID   int      `json:"zone_id,omitempty"`
 	Name     string   `json:"name"`
 	Type     string   `json:"type"`
 	Content  string   `json:"content"`

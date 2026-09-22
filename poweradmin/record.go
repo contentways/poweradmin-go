@@ -12,7 +12,7 @@ import (
 // Record represents a DNS record in Poweradmin.
 type Record struct {
 	ID       string
-	ZoneID   int64
+	ZoneID   int
 	Name     string
 	Type     string
 	Content  string

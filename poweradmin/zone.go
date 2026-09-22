@@ -20,15 +20,19 @@ const (
 )
 
 // Zone represents a DNS zone in Poweradmin.
+//
+// Zones returned by [ZoneClient.List], [ZoneClient.All] and
+// [ZoneClient.GetByName] only carry ID, Name, Type and CreatedAt, because the
+// list endpoint returns nothing else. Use [ZoneClient.GetByID] for Masters,
+// Account and Description, and [ZoneClient.GetDNSSEC] for the DNSSEC status.
 type Zone struct {
-	ID           int
-	Name         string
-	Type         ZoneType
-	Masters      string
-	Account      string
-	Description  string
-	SOASerial    int
-	DNSSECSigned bool
+	ID          int
+	Name        string
+	Type        ZoneType
+	Masters     string
+	Account     string
+	Description string
+	CreatedAt   string
 }
 
 // ZoneCreateOpts configures a zone creation request.
@@ -130,10 +134,8 @@ func (z *ZoneClient) GetByName(ctx context.Context, name string) (*Zone, *Respon
 	}
 }
 
-// List returns one page of [Zone]s.
-// Note: /v2/zones wraps the array under data.zones — unlike the other list
-// endpoints in this API. The wrapper is unmarshalled here so callers see a
-// plain slice.
+// List returns one page of [Zone]s. The list endpoint only returns ID, Name,
+// Type and CreatedAt; see [Zone].
 func (z *ZoneClient) List(ctx context.Context, opts ListOpts) ([]*Zone, *Response, error) {
 	path := appendQuery("zones", opts.values())
 	var result schema.ZoneListResponse

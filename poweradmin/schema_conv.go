@@ -13,27 +13,25 @@ import "github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 
 func ZoneFromSchema(s schema.Zone) Zone {
 	return Zone{
-		ID:           s.ID,
-		Name:         s.Name,
-		Type:         ZoneType(s.Type),
-		Masters:      s.Masters,
-		Account:      s.Account,
-		Description:  s.Description,
-		SOASerial:    s.SOASerial,
-		DNSSECSigned: s.DNSSECSigned,
+		ID:          s.ID,
+		Name:        s.Name,
+		Type:        ZoneType(s.Type),
+		Masters:     s.Masters,
+		Account:     s.Account,
+		Description: s.Description,
+		CreatedAt:   s.CreatedAt,
 	}
 }
 
 func ZoneToSchema(z Zone) schema.Zone {
 	return schema.Zone{
-		ID:           z.ID,
-		Name:         z.Name,
-		Type:         string(z.Type),
-		Masters:      z.Masters,
-		Account:      z.Account,
-		Description:  z.Description,
-		SOASerial:    z.SOASerial,
-		DNSSECSigned: z.DNSSECSigned,
+		ID:          z.ID,
+		Name:        z.Name,
+		Type:        string(z.Type),
+		Masters:     z.Masters,
+		Account:     z.Account,
+		Description: z.Description,
+		CreatedAt:   z.CreatedAt,
 	}
 }
 
@@ -112,15 +110,18 @@ func GroupMemberFromSchema(s schema.GroupMember) GroupMember {
 	return GroupMember{
 		UserID:   s.UserID,
 		Username: s.Username,
+		Fullname: s.Fullname,
+		Email:    s.Email,
 		JoinedAt: s.JoinedAt,
 	}
 }
 
 func GroupZoneFromSchema(s schema.GroupZone) GroupZone {
 	return GroupZone{
-		ZoneID:   s.ZoneID,
-		ZoneName: s.ZoneName,
-		ZoneType: s.ZoneType,
+		ZoneID:    s.ZoneID,
+		ZoneName:  s.ZoneName,
+		ZoneType:  s.ZoneType,
+		CreatedAt: s.CreatedAt,
 	}
 }
 
