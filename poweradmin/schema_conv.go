@@ -39,7 +39,7 @@ func ZoneToSchema(z Zone) schema.Zone {
 
 func RecordFromSchema(s schema.Record) Record {
 	return Record{
-		ID:       s.ID,
+		ID:       string(s.ID),
 		ZoneID:   s.ZoneID,
 		Name:     s.Name,
 		Type:     s.Type,
@@ -53,7 +53,7 @@ func RecordFromSchema(s schema.Record) Record {
 
 func RecordToSchema(r Record) schema.Record {
 	return schema.Record{
-		ID:       r.ID,
+		ID:       schema.RecordID(r.ID),
 		ZoneID:   r.ZoneID,
 		Name:     r.Name,
 		Type:     r.Type,

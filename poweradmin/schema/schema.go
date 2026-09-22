@@ -132,15 +132,15 @@ type ZoneMetadataSetRequest struct {
 // ── Record ───────────────────────────────────────────────────────────────────
 
 type Record struct {
-	ID       string `json:"id,omitempty"`
-	ZoneID   int64  `json:"zone_id,omitempty"`
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Content  string `json:"content"`
-	TTL      int    `json:"ttl"`
-	Priority int    `json:"priority,omitempty"`
-	Disabled bool   `json:"disabled"`
-	Auth     bool   `json:"auth,omitempty"`
+	ID       RecordID `json:"id,omitempty"`
+	ZoneID   int64    `json:"zone_id,omitempty"`
+	Name     string   `json:"name"`
+	Type     string   `json:"type"`
+	Content  string   `json:"content"`
+	TTL      int      `json:"ttl"`
+	Priority int      `json:"priority,omitempty"`
+	Disabled bool     `json:"disabled"`
+	Auth     bool     `json:"auth,omitempty"`
 }
 
 // RecordResponse is used for both single-record GET and the POST create

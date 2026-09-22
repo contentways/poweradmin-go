@@ -144,7 +144,7 @@ func (r *RecordClient) Create(ctx context.Context, zoneID int, opts RecordCreate
 	if err != nil {
 		return "", resp, err
 	}
-	return result.Record.ID, resp, nil
+	return string(result.Record.ID), resp, nil
 }
 
 // Update updates an existing [Record] and returns the updated state.

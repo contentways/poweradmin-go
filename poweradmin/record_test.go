@@ -189,3 +189,37 @@ func TestRecordDelete(t *testing.T) {
 		t.Error("DELETE was not called")
 	}
 }
+
+// Poweradmin emits purely numeric record IDs as JSON numbers.
+func TestRecordNumericIDs(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			writeEnvelope(t, w, http.StatusOK, map[string]any{"records": []map[string]any{
+				{"id": 1234, "name": "www.example.com", "type": "A", "content": "192.0.2.1", "ttl": 300, "priority": nil, "disabled": false},
+			}})
+		case http.MethodPost:
+			writeEnvelope(t, w, http.StatusCreated, map[string]any{"record": map[string]any{
+				"id": 1235, "zone_id": 5, "name": "api.example.com", "type": "A", "content": "192.0.2.2", "ttl": 300,
+			}})
+		}
+	})
+
+	records, _, err := client.Record.List(context.Background(), 5, RecordListOpts{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(records) != 1 || records[0].ID != "1234" {
+		t.Errorf("records = %+v, want ID 1234", records)
+	}
+
+	id, _, err := client.Record.Create(context.Background(), 5, RecordCreateOpts{
+		Name: "api.example.com", Type: "A", Content: "192.0.2.2", TTL: 300,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if id != "1235" {
+		t.Errorf("Create ID = %q, want 1235", id)
+	}
+}
