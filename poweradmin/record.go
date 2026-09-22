@@ -6,13 +6,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
 
 // Record represents a DNS record in Poweradmin.
 type Record struct {
 	ID       string
-	ZoneID   int64
+	ZoneID   int
 	Name     string
 	Type     string
 	Content  string
@@ -34,11 +34,11 @@ type RecordCreateOpts struct {
 }
 
 // RecordUpdateOpts configures a record update request.
-// Pointer fields are only sent when non-nil.
+// Only non-nil fields are sent; omitted fields keep their current value.
 type RecordUpdateOpts struct {
-	Name     string
-	Type     string
-	Content  string
+	Name     *string
+	Type     *string
+	Content  *string
 	TTL      *int
 	Priority *int
 	Disabled *bool
@@ -144,7 +144,7 @@ func (r *RecordClient) Create(ctx context.Context, zoneID int, opts RecordCreate
 	if err != nil {
 		return "", resp, err
 	}
-	return result.Record.ID, resp, nil
+	return string(result.Record.ID), resp, nil
 }
 
 // Update updates an existing [Record] and returns the updated state.

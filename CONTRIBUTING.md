@@ -31,7 +31,7 @@ Thank you for considering contributing to **poweradmin-go** — a Go SDK for the
 ### Setup
 
 ```bash
-git clone https://github.com/Contentways/poweradmin-go.git
+git clone https://github.com/contentways/poweradmin-go.git
 cd poweradmin-go
 go mod tidy
 cd tools && go mod tidy && cd ..
@@ -45,7 +45,7 @@ poweradmin-go/
 ├── poweradmin/         # SDK package (domain types, resource clients)
 │   ├── schema/         # Raw JSON types — 1:1 API mapping, never use directly
 │   ├── zz_*.go         # Generated files — do not edit manually
-│   ├── schema_gen.go   # goverter converter interface (edit to add new conversions)
+│   ├── schema_conv.go  # hand-written schema ↔ domain conversions
 │   └── generate.sh     # Runs all code generators
 └── tools/
     └── go.mod          # Isolated module for code generation tools

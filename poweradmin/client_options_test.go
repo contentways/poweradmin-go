@@ -70,3 +70,29 @@ func TestWithInsecureWithoutPriorTransport(t *testing.T) {
 		t.Error("InsecureSkipVerify not set")
 	}
 }
+
+func TestWithRetryOptions(t *testing.T) {
+	c, err := NewClient(WithBaseURL("https://dns.example.com"), WithAPIKey("k"), WithRetry(4))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	if c.retry == nil || c.retry.maxAttempts != 4 || c.retry.backoff == nil {
+		t.Fatalf("retry = %+v, want 4 attempts with default backoff", c.retry)
+	}
+
+	c, _ = NewClient(WithBaseURL("https://dns.example.com"), WithAPIKey("k"), WithRetry(4), WithRetry(1))
+	if c.retry != nil {
+		t.Errorf("WithRetry(1) should disable retries, got %+v", c.retry)
+	}
+
+	backoff := func(int) time.Duration { return time.Second }
+	c, _ = NewClient(WithBaseURL("https://dns.example.com"), WithAPIKey("k"), WithRetryBackoff(backoff))
+	if c.retry == nil || c.retry.maxAttempts != 3 || c.retry.backoff(0) != time.Second {
+		t.Errorf("WithRetryBackoff alone = %+v, want 3 attempts with custom backoff", c.retry)
+	}
+
+	c, _ = NewClient(WithBaseURL("https://dns.example.com"), WithAPIKey("k"), WithRetryBackoff(backoff), WithRetry(6))
+	if c.retry.maxAttempts != 6 || c.retry.backoff(0) != time.Second {
+		t.Errorf("WithRetryBackoff then WithRetry = %+v", c.retry)
+	}
+}

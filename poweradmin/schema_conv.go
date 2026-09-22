@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 package poweradmin
 
-import "github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+import "github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 
 // This file holds the schema ↔ domain conversion functions.
 // Hand-written rather than goverter-generated to avoid a bootstrap dependency
@@ -13,33 +13,31 @@ import "github.com/contentways/poweradmin-go/v3/poweradmin/schema"
 
 func ZoneFromSchema(s schema.Zone) Zone {
 	return Zone{
-		ID:           s.ID,
-		Name:         s.Name,
-		Type:         ZoneType(s.Type),
-		Masters:      s.Masters,
-		Account:      s.Account,
-		Description:  s.Description,
-		SOASerial:    s.SOASerial,
-		DNSSECSigned: s.DNSSECSigned,
+		ID:          s.ID,
+		Name:        s.Name,
+		Type:        ZoneType(s.Type),
+		Masters:     s.Masters,
+		Account:     s.Account,
+		Description: s.Description,
+		CreatedAt:   s.CreatedAt,
 	}
 }
 
 func ZoneToSchema(z Zone) schema.Zone {
 	return schema.Zone{
-		ID:           z.ID,
-		Name:         z.Name,
-		Type:         string(z.Type),
-		Masters:      z.Masters,
-		Account:      z.Account,
-		Description:  z.Description,
-		SOASerial:    z.SOASerial,
-		DNSSECSigned: z.DNSSECSigned,
+		ID:          z.ID,
+		Name:        z.Name,
+		Type:        string(z.Type),
+		Masters:     z.Masters,
+		Account:     z.Account,
+		Description: z.Description,
+		CreatedAt:   z.CreatedAt,
 	}
 }
 
 func RecordFromSchema(s schema.Record) Record {
 	return Record{
-		ID:       s.ID,
+		ID:       string(s.ID),
 		ZoneID:   s.ZoneID,
 		Name:     s.Name,
 		Type:     s.Type,
@@ -53,7 +51,7 @@ func RecordFromSchema(s schema.Record) Record {
 
 func RecordToSchema(r Record) schema.Record {
 	return schema.Record{
-		ID:       r.ID,
+		ID:       schema.RecordID(r.ID),
 		ZoneID:   r.ZoneID,
 		Name:     r.Name,
 		Type:     r.Type,
@@ -112,15 +110,18 @@ func GroupMemberFromSchema(s schema.GroupMember) GroupMember {
 	return GroupMember{
 		UserID:   s.UserID,
 		Username: s.Username,
+		Fullname: s.Fullname,
+		Email:    s.Email,
 		JoinedAt: s.JoinedAt,
 	}
 }
 
 func GroupZoneFromSchema(s schema.GroupZone) GroupZone {
 	return GroupZone{
-		ZoneID:   s.ZoneID,
-		ZoneName: s.ZoneName,
-		ZoneType: s.ZoneType,
+		ZoneID:    s.ZoneID,
+		ZoneName:  s.ZoneName,
+		ZoneType:  s.ZoneType,
+		CreatedAt: s.CreatedAt,
 	}
 }
 
@@ -146,5 +147,41 @@ func ZoneDNSSECFromSchema(s schema.ZoneDNSSECResponse) ZoneDNSSEC {
 		Enabled:   s.Enabled,
 		DSRecords: records,
 		DNSKey:    s.DNSKey,
+	}
+}
+
+func PermissionTemplateFromSchema(s schema.PermissionTemplate) PermissionTemplate {
+	perms := make([]Permission, len(s.Permissions))
+	for i, p := range s.Permissions {
+		perms[i] = PermissionFromSchema(p)
+	}
+	return PermissionTemplate{
+		ID:           s.ID,
+		Name:         s.Name,
+		Descr:        s.Descr,
+		TemplateType: s.TemplateType,
+		Permissions:  perms,
+	}
+}
+
+func ZoneTemplateFromSchema(s schema.ZoneTemplate) ZoneTemplate {
+	return ZoneTemplate{
+		ID:          s.ID,
+		Name:        s.Name,
+		Description: s.Description,
+		Owner:       s.Owner,
+		IsGlobal:    s.IsGlobal,
+		ZonesLinked: s.ZonesLinked,
+	}
+}
+
+func ZoneTemplateRecordFromSchema(s schema.ZoneTemplateRecord) ZoneTemplateRecord {
+	return ZoneTemplateRecord{
+		ID:       s.ID,
+		Name:     s.Name,
+		Type:     s.Type,
+		Content:  s.Content,
+		TTL:      s.TTL,
+		Priority: s.Priority,
 	}
 }

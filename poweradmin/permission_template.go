@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
 
 // PermissionTemplate represents a named bundle of permissions that can be
@@ -56,7 +56,7 @@ func (c *PermissionTemplateClient) GetByID(ctx context.Context, id int) (*Permis
 	if err != nil {
 		return nil, resp, err
 	}
-	tpl := permissionTemplateFromSchema(result.Template)
+	tpl := PermissionTemplateFromSchema(result.Template)
 	return &tpl, resp, nil
 }
 
@@ -70,7 +70,7 @@ func (c *PermissionTemplateClient) List(ctx context.Context) ([]*PermissionTempl
 	}
 	templates := make([]*PermissionTemplate, len(result.Templates))
 	for i, s := range result.Templates {
-		tpl := permissionTemplateFromSchema(s)
+		tpl := PermissionTemplateFromSchema(s)
 		templates[i] = &tpl
 	}
 	return templates, resp, nil
@@ -122,18 +122,4 @@ func (c *PermissionTemplateClient) Update(ctx context.Context, id int, opts Perm
 // Delete deletes a [PermissionTemplate].
 func (c *PermissionTemplateClient) Delete(ctx context.Context, id int) (*Response, error) {
 	return c.client.delete(ctx, fmt.Sprintf("permission-templates/%d", id))
-}
-
-func permissionTemplateFromSchema(s schema.PermissionTemplate) PermissionTemplate {
-	perms := make([]Permission, len(s.Permissions))
-	for i, p := range s.Permissions {
-		perms[i] = PermissionFromSchema(p)
-	}
-	return PermissionTemplate{
-		ID:           s.ID,
-		Name:         s.Name,
-		Descr:        s.Descr,
-		TemplateType: s.TemplateType,
-		Permissions:  perms,
-	}
 }

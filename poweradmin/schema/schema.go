@@ -18,7 +18,10 @@
 // README.
 package schema
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strconv"
+)
 
 // APIResponse represents the Poweradmin API envelope. Data is RawMessage so
 // callers can unmarshal it into the concrete shape without a marshal roundtrip.
@@ -51,15 +54,13 @@ type Pagination struct {
 // ── Zone ─────────────────────────────────────────────────────────────────────
 
 type Zone struct {
-	ID           int    `json:"id,omitempty"`
-	Name         string `json:"name"`
-	Type         string `json:"type"`
-	Masters      string `json:"masters,omitempty"`
-	Account      string `json:"account,omitempty"`
-	Description  string `json:"description,omitempty"`
-	SOASerial    int    `json:"soa_serial,omitempty"`
-	DNSSECSigned bool   `json:"dnssec_signed,omitempty"`
-	CreatedAt    string `json:"created_at,omitempty"`
+	ID          int    `json:"id,omitempty"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Masters     string `json:"masters,omitempty"`
+	Account     string `json:"account,omitempty"`
+	Description string `json:"description,omitempty"`
+	CreatedAt   string `json:"created_at,omitempty"`
 }
 
 type ZoneResponse struct {
@@ -70,23 +71,43 @@ type ZoneListResponse struct {
 	Zones []Zone `json:"zones"`
 }
 
+// ZoneCreateRequest is sent via POST /v2/zones.
 type ZoneCreateRequest struct {
 	Name        string `json:"name"`
 	Type        string `json:"type"`
-	Masters     string `json:"masters,omitempty"`
+	Master      string `json:"master,omitempty"`
 	Account     string `json:"account,omitempty"`
 	Description string `json:"description,omitempty"`
-	Template    string `json:"template,omitempty"`
+	// Template is a zone template ID; 0 means no template.
+	Template     int  `json:"template,omitempty"`
+	EnableDNSSEC bool `json:"enable_dnssec,omitempty"`
+	// OwnerUserID distinguishes three states the API treats differently:
+	// omitted (owner is the authenticated user), a user ID, and an explicit
+	// JSON null (no user owner, group-only zone). Use OwnerUserIDNull or
+	// OwnerUserIDValue to build it.
+	OwnerUserID json.RawMessage `json:"owner_user_id,omitempty"`
+	GroupIDs    []int           `json:"group_ids,omitempty"`
+}
+
+// OwnerUserIDNull is the explicit JSON null for [ZoneCreateRequest.OwnerUserID].
+func OwnerUserIDNull() json.RawMessage { return json.RawMessage("null") }
+
+// OwnerUserIDValue encodes a user ID for [ZoneCreateRequest.OwnerUserID].
+func OwnerUserIDValue(id int) json.RawMessage {
+	return json.RawMessage(strconv.Itoa(id))
 }
 
 type ZoneCreateResponse struct {
 	ZoneID int `json:"zone_id"`
 }
 
+// ZoneUpdateRequest is sent via PUT /v2/zones/{id}. The server only reads
+// name, type, master (singular, unlike the "masters" field it returns) and
+// description. The account cannot be changed after creation.
 type ZoneUpdateRequest struct {
+	Name        *string `json:"name,omitempty"`
 	Type        *string `json:"type,omitempty"`
-	Masters     *string `json:"masters,omitempty"`
-	Account     *string `json:"account,omitempty"`
+	Master      *string `json:"master,omitempty"`
 	Description *string `json:"description,omitempty"`
 }
 
@@ -132,15 +153,15 @@ type ZoneMetadataSetRequest struct {
 // ── Record ───────────────────────────────────────────────────────────────────
 
 type Record struct {
-	ID       string `json:"id,omitempty"`
-	ZoneID   int64  `json:"zone_id,omitempty"`
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Content  string `json:"content"`
-	TTL      int    `json:"ttl"`
-	Priority int    `json:"priority,omitempty"`
-	Disabled bool   `json:"disabled"`
-	Auth     bool   `json:"auth,omitempty"`
+	ID       RecordID `json:"id,omitempty"`
+	ZoneID   int      `json:"zone_id,omitempty"`
+	Name     string   `json:"name"`
+	Type     string   `json:"type"`
+	Content  string   `json:"content"`
+	TTL      int      `json:"ttl"`
+	Priority int      `json:"priority,omitempty"`
+	Disabled bool     `json:"disabled"`
+	Auth     bool     `json:"auth,omitempty"`
 }
 
 // RecordResponse is used for both single-record GET and the POST create
@@ -164,13 +185,15 @@ type RecordCreateRequest struct {
 	CreatePTR bool   `json:"create_ptr,omitempty"`
 }
 
+// RecordUpdateRequest is sent via PUT /v2/zones/{id}/records/{id}. Omitted
+// fields keep their current value on the server.
 type RecordUpdateRequest struct {
-	Name     string `json:"name,omitempty"`
-	Type     string `json:"type,omitempty"`
-	Content  string `json:"content,omitempty"`
-	TTL      *int   `json:"ttl,omitempty"`
-	Priority *int   `json:"priority,omitempty"`
-	Disabled *bool  `json:"disabled,omitempty"`
+	Name     *string `json:"name,omitempty"`
+	Type     *string `json:"type,omitempty"`
+	Content  *string `json:"content,omitempty"`
+	TTL      *int    `json:"ttl,omitempty"`
+	Priority *int    `json:"priority,omitempty"`
+	Disabled *bool   `json:"disabled,omitempty"`
 }
 
 type BulkRecordOperation struct {
@@ -274,16 +297,28 @@ type UserCreateRequest struct {
 	UseLdap     bool   `json:"use_ldap,omitempty"`
 }
 
+// UserUpdateRequest is sent via PUT /v2/users/{id}. Omitted fields keep their
+// current value on the server; the server answers with data.user_id only.
 type UserUpdateRequest struct {
-	Username    string `json:"username,omitempty"`
-	Password    string `json:"password,omitempty"`
-	Fullname    string `json:"fullname,omitempty"`
-	Email       string `json:"email,omitempty"`
-	Description string `json:"description,omitempty"`
-	// Active must be sent explicitly even for false to take effect — see API docs.
-	Active    *bool `json:"active,omitempty"`
-	PermTempl int   `json:"perm_templ,omitempty"`
-	UseLdap   *bool `json:"use_ldap,omitempty"`
+	Username    *string `json:"username,omitempty"`
+	Password    *string `json:"password,omitempty"`
+	Fullname    *string `json:"fullname,omitempty"`
+	Email       *string `json:"email,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Active      *bool   `json:"active,omitempty"`
+	PermTempl   *int    `json:"perm_templ,omitempty"`
+	UseLdap     *bool   `json:"use_ldap,omitempty"`
+}
+
+// UserDeleteRequest is the optional body of DELETE /v2/users/{id}. The server
+// requires TransferToUserID when the user still owns zones.
+type UserDeleteRequest struct {
+	TransferToUserID *int `json:"transfer_to_user_id,omitempty"`
+}
+
+// UserDeleteResponse is returned under data by DELETE /v2/users/{id}.
+type UserDeleteResponse struct {
+	ZonesAffected int `json:"zones_affected"`
 }
 
 // UserPatchRequest is sent via PATCH /v2/users/{id} for partial updates such as
@@ -366,10 +401,12 @@ type GroupCreateRequest struct {
 	PermTemplID int    `json:"perm_templ_id"`
 }
 
+// GroupUpdateRequest is sent via PUT /v2/groups/{id}. Omitted fields keep
+// their current value on the server.
 type GroupUpdateRequest struct {
-	Name        string  `json:"name,omitempty"`
+	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
-	PermTemplID int     `json:"perm_templ_id,omitempty"`
+	PermTemplID *int    `json:"perm_templ_id,omitempty"`
 }
 
 type GroupMember struct {

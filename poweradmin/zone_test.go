@@ -163,6 +163,75 @@ func TestZoneCreate(t *testing.T) {
 	}
 }
 
+func TestZoneCreateWireFields(t *testing.T) {
+	tests := []struct {
+		name string
+		opts ZoneCreateOpts
+		want map[string]any
+	}{
+		{
+			name: "minimal",
+			opts: ZoneCreateOpts{Name: "example.com", Type: ZoneTypeMaster},
+			want: map[string]any{"name": "example.com", "type": "MASTER"},
+		},
+		{
+			name: "slave with template, dnssec and explicit owner",
+			opts: ZoneCreateOpts{
+				Name: "example.org", Type: ZoneTypeSlave, Masters: "192.0.2.1:5300",
+				Account: "acme", Description: "prod", TemplateID: 3, EnableDNSSEC: true,
+				OwnerUserID: new(7), GroupIDs: []int{2, 5},
+			},
+			want: map[string]any{
+				"name": "example.org", "type": "SLAVE", "master": "192.0.2.1:5300",
+				"account": "acme", "description": "prod", "template": 3, "enable_dnssec": true,
+				"owner_user_id": 7, "group_ids": []any{float64(2), float64(5)},
+			},
+		},
+		{
+			name: "group-only zone sends explicit null owner",
+			opts: ZoneCreateOpts{Name: "example.net", Type: ZoneTypeNative, WithoutUserOwner: true, GroupIDs: []int{2}},
+			want: map[string]any{
+				"name": "example.net", "type": "NATIVE", "owner_user_id": nil, "group_ids": []any{float64(2)},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got map[string]any
+			client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				decodeBody(t, r, &got)
+				writeEnvelope(t, w, http.StatusCreated, map[string]any{"zone_id": 42})
+			})
+			id, _, err := client.Zone.Create(context.Background(), tt.opts)
+			if err != nil {
+				t.Fatalf("Create: %v", err)
+			}
+			if id != 42 {
+				t.Errorf("id = %d, want 42", id)
+			}
+			if !equalJSONMaps(got, tt.want) {
+				t.Errorf("body = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestZoneCreateOwnerValidation(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Error("no request expected for invalid options")
+	})
+	for name, opts := range map[string]ZoneCreateOpts{
+		"owner and no owner":      {Name: "a.com", OwnerUserID: new(1), WithoutUserOwner: true, GroupIDs: []int{1}},
+		"no owner without groups": {Name: "a.com", WithoutUserOwner: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, _, err := client.Zone.Create(context.Background(), opts); err == nil {
+				t.Error("expected validation error")
+			}
+		})
+	}
+}
+
 func TestZoneUpdate(t *testing.T) {
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
@@ -188,6 +257,48 @@ func TestZoneUpdate(t *testing.T) {
 	}
 	if z.Description != "updated" {
 		t.Errorf("description = %q", z.Description)
+	}
+}
+
+// The update endpoint reads "master" (singular) and "name"; it silently
+// ignores "masters" and "account".
+func TestZoneUpdateWireFields(t *testing.T) {
+	var got map[string]any
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if err := json.Unmarshal(body, &got); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		writeEnvelope(t, w, http.StatusOK, map[string]any{
+			"zone": map[string]any{
+				"id": 5, "name": "new.example.com", "type": "SLAVE",
+				"masters": "192.0.2.1,192.0.2.2:5300", "account": nil, "description": nil,
+			},
+		})
+	})
+	name := "new.example.com"
+	typ := ZoneTypeSlave
+	masters := "192.0.2.1,192.0.2.2:5300"
+	z, _, err := client.Zone.Update(context.Background(), 5, ZoneUpdateOpts{
+		Name: &name, Type: &typ, Masters: &masters,
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	want := map[string]any{"name": name, "type": "SLAVE", "master": masters}
+	if len(got) != len(want) {
+		t.Errorf("body = %v, want exactly %v", got, want)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("body[%q] = %v, want %v", k, got[k], v)
+		}
+	}
+	if _, present := got["masters"]; present {
+		t.Error(`body must not contain "masters"; the update endpoint ignores it`)
+	}
+	if z.Name != name || z.Masters != masters || z.Account != "" {
+		t.Errorf("zone = %+v", z)
 	}
 }
 

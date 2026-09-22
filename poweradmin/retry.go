@@ -42,8 +42,29 @@ func DefaultBackoff(attempt int) time.Duration {
 	return d
 }
 
-// shouldRetryStatus reports whether an HTTP status code is retryable.
-// 429 (Too Many Requests) and 5xx are retried.
-func shouldRetryStatus(code int) bool {
-	return code == http.StatusTooManyRequests || (code >= 500 && code < 600)
+// shouldRetryStatus reports whether a response with the given status code may
+// be retried. 429 (Too Many Requests) means the server rejected the request
+// without processing it, so it is always retried. 5xx is only retried for
+// idempotent methods: a POST that failed with 502 may still have created the
+// zone or record, and replaying it would create a duplicate.
+func shouldRetryStatus(method string, code int) bool {
+	if code == http.StatusTooManyRequests {
+		return true
+	}
+	return code >= 500 && code < 600 && isIdempotent(method)
+}
+
+// shouldRetryError reports whether a transport error may be retried. The
+// request may have reached the server, so only idempotent methods qualify.
+func shouldRetryError(method string) bool {
+	return isIdempotent(method)
+}
+
+func isIdempotent(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodPut, http.MethodDelete, http.MethodOptions:
+		return true
+	default:
+		return false
+	}
 }

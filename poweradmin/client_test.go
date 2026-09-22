@@ -4,6 +4,7 @@ package poweradmin
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -154,5 +155,22 @@ func TestParseSuccessFalseEnvelope(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "nope") {
 		t.Errorf("error = %v, want 'nope'", err)
+	}
+}
+
+func TestErrorMessageIsNotRawBody(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeError(t, w, http.StatusConflict, "Zone already exists")
+	})
+	_, _, err := client.Zone.Create(context.Background(), ZoneCreateOpts{Name: "example.com", Type: ZoneTypeMaster})
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("err = %v, want *APIError", err)
+	}
+	if apiErr.Message != "Zone already exists" {
+		t.Errorf("Message = %q, want %q", apiErr.Message, "Zone already exists")
+	}
+	if want := "poweradmin: HTTP 409: Zone already exists"; err.Error() != want {
+		t.Errorf("Error() = %q, want %q", err.Error(), want)
 	}
 }

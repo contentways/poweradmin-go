@@ -107,18 +107,24 @@ func TestZoneTemplateRecords(t *testing.T) {
 	}
 }
 
+// PUT /v2/zone-templates/{id} returns data: null; Update reads the template back.
 func TestZoneTemplateUpdate(t *testing.T) {
+	var calls []string
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPut && r.URL.Path == "/api/v2/zone-templates/7":
+		calls = append(calls, r.Method)
+		if r.URL.Path != "/api/v2/zone-templates/7" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		switch r.Method {
+		case http.MethodPut:
+			writeEnvelope(t, w, http.StatusOK, nil)
+		case http.MethodGet:
 			writeEnvelope(t, w, http.StatusOK, map[string]any{
 				"template": map[string]any{
 					"id": 7, "name": "Updated", "description": "new desc",
 					"owner": 1, "is_global": true, "zones_linked": 0,
 				},
 			})
-		default:
-			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
 	})
 	tpl, _, err := client.ZoneTemplate.Update(context.Background(), 7, ZoneTemplateUpdateOpts{
@@ -126,6 +132,9 @@ func TestZoneTemplateUpdate(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
+	}
+	if len(calls) != 2 || calls[1] != http.MethodGet {
+		t.Errorf("calls = %v, want [PUT GET]", calls)
 	}
 	if tpl.ID != 7 || tpl.Name != "Updated" || !tpl.IsGlobal {
 		t.Errorf("tpl = %+v", tpl)
@@ -171,23 +180,35 @@ func TestZoneTemplateGetRecord(t *testing.T) {
 	}
 }
 
+// PUT /v2/zone-templates/{id}/records/{id} returns data: null; UpdateRecord
+// reads the record back.
 func TestZoneTemplateUpdateRecord(t *testing.T) {
+	var calls []string
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPut || r.URL.Path != "/api/v2/zone-templates/1/records/5" {
-			t.Errorf("method/path = %s %s", r.Method, r.URL.Path)
+		calls = append(calls, r.Method)
+		if r.URL.Path != "/api/v2/zone-templates/1/records/5" {
+			t.Errorf("path = %s", r.URL.Path)
 		}
-		writeEnvelope(t, w, http.StatusOK, map[string]any{
-			"record": map[string]any{
-				"id": 5, "name": "[ZONE]", "type": "A",
-				"content": "9.9.9.9", "ttl": 7200, "priority": 0,
-			},
-		})
+		switch r.Method {
+		case http.MethodPut:
+			writeEnvelope(t, w, http.StatusOK, nil)
+		case http.MethodGet:
+			writeEnvelope(t, w, http.StatusOK, map[string]any{
+				"record": map[string]any{
+					"id": 5, "name": "[ZONE]", "type": "A",
+					"content": "9.9.9.9", "ttl": 7200, "priority": 0,
+				},
+			})
+		}
 	})
 	rec, _, err := client.ZoneTemplate.UpdateRecord(context.Background(), 1, 5, ZoneTemplateRecordOpts{
 		Name: "[ZONE]", Type: "A", Content: "9.9.9.9", TTL: 7200,
 	})
 	if err != nil {
 		t.Fatalf("UpdateRecord: %v", err)
+	}
+	if len(calls) != 2 || calls[1] != http.MethodGet {
+		t.Errorf("calls = %v, want [PUT GET]", calls)
 	}
 	if rec.Content != "9.9.9.9" || rec.TTL != 7200 {
 		t.Errorf("rec = %+v", rec)

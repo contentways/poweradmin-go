@@ -4,9 +4,11 @@ package poweradmin
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/url"
 
-	"github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
 
 // ZoneType represents the type of a DNS zone.
@@ -19,33 +21,57 @@ const (
 )
 
 // Zone represents a DNS zone in Poweradmin.
+//
+// Zones returned by [ZoneClient.List], [ZoneClient.All] and
+// [ZoneClient.GetByName] only carry ID, Name, Type and CreatedAt, because the
+// list endpoint returns nothing else. Use [ZoneClient.GetByID] for Masters,
+// Account and Description, and [ZoneClient.GetDNSSEC] for the DNSSEC status.
 type Zone struct {
-	ID           int
-	Name         string
-	Type         ZoneType
-	Masters      string
-	Account      string
-	Description  string
-	SOASerial    int
-	DNSSECSigned bool
-}
-
-// ZoneCreateOpts configures a zone creation request.
-type ZoneCreateOpts struct {
+	ID          int
 	Name        string
 	Type        ZoneType
 	Masters     string
 	Account     string
 	Description string
-	Template    string
+	CreatedAt   string
+}
+
+// ZoneCreateOpts configures a zone creation request.
+type ZoneCreateOpts struct {
+	Name string
+	Type ZoneType
+	// Masters is a comma-separated list of master servers for SLAVE zones,
+	// e.g. "192.0.2.1,192.0.2.2:5300" or "[2001:db8::1]:5300".
+	Masters     string
+	Account     string
+	Description string
+	// TemplateID applies a zone template (see [ZoneTemplateClient]); 0 means
+	// no template.
+	TemplateID   int
+	EnableDNSSEC bool
+	// OwnerUserID assigns a specific user as owner. When nil, the API makes
+	// the authenticated user the owner.
+	OwnerUserID *int
+	// WithoutUserOwner creates a group-only zone with no user owner. It
+	// requires a non-empty GroupIDs and a server zone ownership mode that
+	// allows groups. It cannot be combined with OwnerUserID.
+	WithoutUserOwner bool
+	// GroupIDs assigns groups as zone owners.
+	GroupIDs []int
 }
 
 // ZoneUpdateOpts configures a zone update request.
 // Only non-nil pointer fields are sent to the API.
+//
+// The zone account cannot be changed through the API; set it via
+// [ZoneCreateOpts] when creating the zone.
 type ZoneUpdateOpts struct {
-	Type        *ZoneType
+	// Name renames the zone (FQDN).
+	Name *string
+	Type *ZoneType
+	// Masters is a comma-separated list of master servers for SLAVE zones,
+	// e.g. "192.0.2.1,192.0.2.2:5300" or "[2001:db8::1]:5300".
 	Masters     *string
-	Account     *string
 	Description *string
 }
 
@@ -88,12 +114,18 @@ func (z *ZoneClient) GetByID(ctx context.Context, id int) (*Zone, *Response, err
 }
 
 // GetByName returns a single [Zone] by its DNS name.
-// Performs a list + linear search across all pages — no dedicated API endpoint exists.
+//
+// It uses the server-side exact-match filter (?name=) of the list endpoint
+// and still compares names client-side, so it also works against servers
+// that ignore the filter; there it falls back to paging through all zones.
+// Like all list results, the returned zone only carries ID, Name, Type and
+// CreatedAt.
 func (z *ZoneClient) GetByName(ctx context.Context, name string) (*Zone, *Response, error) {
-	// TODO: replace with a server-side filter once the Poweradmin API gains one.
 	opts := ListOpts{Page: 1, PerPage: 100}
 	for {
-		zones, resp, err := z.List(ctx, opts)
+		q := opts.values()
+		q.Set("name", name)
+		zones, resp, err := z.list(ctx, q)
 		if err != nil {
 			return nil, resp, err
 		}
@@ -109,12 +141,14 @@ func (z *ZoneClient) GetByName(ctx context.Context, name string) (*Zone, *Respon
 	}
 }
 
-// List returns one page of [Zone]s.
-// Note: /v2/zones wraps the array under data.zones — unlike the other list
-// endpoints in this API. The wrapper is unmarshalled here so callers see a
-// plain slice.
+// List returns one page of [Zone]s. The list endpoint only returns ID, Name,
+// Type and CreatedAt; see [Zone].
 func (z *ZoneClient) List(ctx context.Context, opts ListOpts) ([]*Zone, *Response, error) {
-	path := appendQuery("zones", opts.values())
+	return z.list(ctx, opts.values())
+}
+
+func (z *ZoneClient) list(ctx context.Context, query url.Values) ([]*Zone, *Response, error) {
+	path := appendQuery("zones", query)
 	var result schema.ZoneListResponse
 	resp, err := z.client.get(ctx, path, &result)
 	if err != nil {
@@ -148,13 +182,27 @@ func (z *ZoneClient) All(ctx context.Context) ([]*Zone, error) {
 // Create creates a new [Zone] and returns the new ID.
 // Call [ZoneClient.GetByID] to fetch the full object.
 func (z *ZoneClient) Create(ctx context.Context, opts ZoneCreateOpts) (int, *Response, error) {
+	if opts.WithoutUserOwner && opts.OwnerUserID != nil {
+		return 0, nil, errors.New("poweradmin: ZoneCreateOpts: OwnerUserID and WithoutUserOwner are mutually exclusive")
+	}
+	if opts.WithoutUserOwner && len(opts.GroupIDs) == 0 {
+		return 0, nil, errors.New("poweradmin: ZoneCreateOpts: WithoutUserOwner requires GroupIDs")
+	}
 	req := schema.ZoneCreateRequest{
-		Name:        opts.Name,
-		Type:        string(opts.Type),
-		Masters:     opts.Masters,
-		Account:     opts.Account,
-		Description: opts.Description,
-		Template:    opts.Template,
+		Name:         opts.Name,
+		Type:         string(opts.Type),
+		Master:       opts.Masters,
+		Account:      opts.Account,
+		Description:  opts.Description,
+		Template:     opts.TemplateID,
+		EnableDNSSEC: opts.EnableDNSSEC,
+		GroupIDs:     opts.GroupIDs,
+	}
+	switch {
+	case opts.WithoutUserOwner:
+		req.OwnerUserID = schema.OwnerUserIDNull()
+	case opts.OwnerUserID != nil:
+		req.OwnerUserID = schema.OwnerUserIDValue(*opts.OwnerUserID)
 	}
 	var result schema.ZoneCreateResponse
 	resp, err := z.client.post(ctx, "zones", req, &result)
@@ -166,14 +214,15 @@ func (z *ZoneClient) Create(ctx context.Context, opts ZoneCreateOpts) (int, *Res
 
 // Update updates an existing [Zone] and returns the updated state.
 func (z *ZoneClient) Update(ctx context.Context, id int, opts ZoneUpdateOpts) (*Zone, *Response, error) {
-	req := schema.ZoneUpdateRequest{}
+	req := schema.ZoneUpdateRequest{
+		Name:        opts.Name,
+		Master:      opts.Masters,
+		Description: opts.Description,
+	}
 	if opts.Type != nil {
 		t := string(*opts.Type)
 		req.Type = &t
 	}
-	req.Masters = opts.Masters
-	req.Account = opts.Account
-	req.Description = opts.Description
 
 	var result schema.ZoneResponse
 	resp, err := z.client.put(ctx, fmt.Sprintf("zones/%d", id), req, &result)

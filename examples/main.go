@@ -23,7 +23,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/contentways/poweradmin-go/v3/poweradmin"
+	"github.com/contentways/poweradmin-go/v4/poweradmin"
 )
 
 func main() {

@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
 
 // Group represents a Poweradmin user group.
@@ -24,14 +24,17 @@ type Group struct {
 type GroupMember struct {
 	UserID   int
 	Username string
+	Fullname string
+	Email    string
 	JoinedAt string
 }
 
 // GroupZone represents a zone associated with a group.
 type GroupZone struct {
-	ZoneID   int
-	ZoneName string
-	ZoneType string
+	ZoneID    int
+	ZoneName  string
+	ZoneType  string
+	CreatedAt string
 }
 
 // GroupCreateOpts configures a group creation request.
@@ -43,9 +46,13 @@ type GroupCreateOpts struct {
 
 // GroupUpdateOpts configures a group update request.
 // Description is a *string so an empty description can be sent explicitly.
+// GroupUpdateOpts configures a group update request.
+// Only non-nil fields are sent; omitted fields keep their current value.
 type GroupUpdateOpts struct {
-	Name        string
+	Name        *string
 	Description *string
+	// PermTemplID must reference a group-type permission template.
+	PermTemplID *int
 }
 
 // GroupClient provides access to the group-related Poweradmin API endpoints.
@@ -138,6 +145,7 @@ func (g *GroupClient) Update(ctx context.Context, id int, opts GroupUpdateOpts) 
 	req := schema.GroupUpdateRequest{
 		Name:        opts.Name,
 		Description: opts.Description,
+		PermTemplID: opts.PermTemplID,
 	}
 	var result schema.GroupResponse
 	resp, err := g.client.put(ctx, fmt.Sprintf("groups/%d", id), req, &result)

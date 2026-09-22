@@ -11,12 +11,15 @@ type IZoneClient interface {
 	// GetByID returns a single [Zone] by its numeric ID.
 	GetByID(ctx context.Context, id int) (*Zone, *Response, error)
 	// GetByName returns a single [Zone] by its DNS name.
-	// Performs a list + linear search across all pages — no dedicated API endpoint exists.
+	//
+	// It uses the server-side exact-match filter (?name=) of the list endpoint
+	// and still compares names client-side, so it also works against servers
+	// that ignore the filter; there it falls back to paging through all zones.
+	// Like all list results, the returned zone only carries ID, Name, Type and
+	// CreatedAt.
 	GetByName(ctx context.Context, name string) (*Zone, *Response, error)
-	// List returns one page of [Zone]s.
-	// Note: /v2/zones wraps the array under data.zones — unlike the other list
-	// endpoints in this API. The wrapper is unmarshalled here so callers see a
-	// plain slice.
+	// List returns one page of [Zone]s. The list endpoint only returns ID, Name,
+	// Type and CreatedAt; see [Zone].
 	List(ctx context.Context, opts ListOpts) ([]*Zone, *Response, error)
 	// All returns all [Zone]s across all pages.
 	All(ctx context.Context) ([]*Zone, error)

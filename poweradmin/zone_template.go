@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
 
 // ZoneTemplate represents a Poweradmin zone template.
@@ -80,7 +80,7 @@ func (c *ZoneTemplateClient) GetByID(ctx context.Context, id int) (*ZoneTemplate
 	if err != nil {
 		return nil, resp, err
 	}
-	tpl := zoneTemplateFromSchema(result.Template)
+	tpl := ZoneTemplateFromSchema(result.Template)
 	return &tpl, resp, nil
 }
 
@@ -93,7 +93,7 @@ func (c *ZoneTemplateClient) List(ctx context.Context) ([]*ZoneTemplate, *Respon
 	}
 	templates := make([]*ZoneTemplate, len(result.Templates))
 	for i, s := range result.Templates {
-		tpl := zoneTemplateFromSchema(s)
+		tpl := ZoneTemplateFromSchema(s)
 		templates[i] = &tpl
 	}
 	return templates, resp, nil
@@ -123,19 +123,24 @@ func (c *ZoneTemplateClient) Create(ctx context.Context, opts ZoneTemplateCreate
 }
 
 // Update updates an existing [ZoneTemplate].
+//
+// The update endpoint returns no data, so Update reads the template back with
+// an additional GET to return the persisted state.
 func (c *ZoneTemplateClient) Update(ctx context.Context, id int, opts ZoneTemplateUpdateOpts) (*ZoneTemplate, *Response, error) {
 	req := schema.ZoneTemplateRequest{
 		Name:        opts.Name,
 		Description: opts.Description,
 		IsGlobal:    opts.IsGlobal,
 	}
-	var result schema.ZoneTemplateResponse
-	resp, err := c.client.put(ctx, fmt.Sprintf("zone-templates/%d", id), req, &result)
+	resp, err := c.client.put(ctx, fmt.Sprintf("zone-templates/%d", id), req, nil)
 	if err != nil {
 		return nil, resp, err
 	}
-	tpl := zoneTemplateFromSchema(result.Template)
-	return &tpl, resp, nil
+	tpl, _, err := c.GetByID(ctx, id)
+	if err != nil {
+		return nil, resp, err
+	}
+	return tpl, resp, nil
 }
 
 // Delete deletes a [ZoneTemplate].
@@ -152,7 +157,7 @@ func (c *ZoneTemplateClient) Records(ctx context.Context, templateID int) ([]*Zo
 	}
 	records := make([]*ZoneTemplateRecord, len(result.Records))
 	for i, s := range result.Records {
-		rec := zoneTemplateRecordFromSchema(s)
+		rec := ZoneTemplateRecordFromSchema(s)
 		records[i] = &rec
 	}
 	return records, resp, nil
@@ -165,7 +170,7 @@ func (c *ZoneTemplateClient) GetRecord(ctx context.Context, templateID, recordID
 	if err != nil {
 		return nil, resp, err
 	}
-	rec := zoneTemplateRecordFromSchema(result.Record)
+	rec := ZoneTemplateRecordFromSchema(result.Record)
 	return &rec, resp, nil
 }
 
@@ -196,6 +201,9 @@ func (c *ZoneTemplateClient) CreateRecord(ctx context.Context, templateID int, o
 }
 
 // UpdateRecord replaces a template record.
+//
+// The update endpoint returns no data, so UpdateRecord reads the record back
+// with an additional GET to return the persisted state.
 func (c *ZoneTemplateClient) UpdateRecord(ctx context.Context, templateID, recordID int, opts ZoneTemplateRecordOpts) (*ZoneTemplateRecord, *Response, error) {
 	req := schema.ZoneTemplateRecordRequest{
 		Name:     opts.Name,
@@ -204,38 +212,18 @@ func (c *ZoneTemplateClient) UpdateRecord(ctx context.Context, templateID, recor
 		TTL:      opts.TTL,
 		Priority: opts.Priority,
 	}
-	var result schema.ZoneTemplateRecordResponse
-	resp, err := c.client.put(ctx, fmt.Sprintf("zone-templates/%d/records/%d", templateID, recordID), req, &result)
+	resp, err := c.client.put(ctx, fmt.Sprintf("zone-templates/%d/records/%d", templateID, recordID), req, nil)
 	if err != nil {
 		return nil, resp, err
 	}
-	rec := zoneTemplateRecordFromSchema(result.Record)
-	return &rec, resp, nil
+	rec, _, err := c.GetRecord(ctx, templateID, recordID)
+	if err != nil {
+		return nil, resp, err
+	}
+	return rec, resp, nil
 }
 
 // DeleteRecord removes a record from a template.
 func (c *ZoneTemplateClient) DeleteRecord(ctx context.Context, templateID, recordID int) (*Response, error) {
 	return c.client.delete(ctx, fmt.Sprintf("zone-templates/%d/records/%d", templateID, recordID))
-}
-
-func zoneTemplateFromSchema(s schema.ZoneTemplate) ZoneTemplate {
-	return ZoneTemplate{
-		ID:          s.ID,
-		Name:        s.Name,
-		Description: s.Description,
-		Owner:       s.Owner,
-		IsGlobal:    s.IsGlobal,
-		ZonesLinked: s.ZonesLinked,
-	}
-}
-
-func zoneTemplateRecordFromSchema(s schema.ZoneTemplateRecord) ZoneTemplateRecord {
-	return ZoneTemplateRecord{
-		ID:       s.ID,
-		Name:     s.Name,
-		Type:     s.Type,
-		Content:  s.Content,
-		TTL:      s.TTL,
-		Priority: s.Priority,
-	}
 }

@@ -9,8 +9,11 @@ import (
 // IUserClient ...
 type IUserClient interface {
 	// GetByName returns a single [User] by username.
-	// Paginates the list endpoint server-side and matches client-side; the API
-	// has no dedicated username lookup.
+	//
+	// It uses the server-side exact-match filter (?username=) of the list
+	// endpoint and still compares usernames client-side, so it also works
+	// against servers that ignore the filter; there it falls back to paging
+	// through all users.
 	GetByName(ctx context.Context, username string) (*User, *Response, error)
 	// GetByID returns a single [User] by ID.
 	GetByID(ctx context.Context, id int) (*User, *Response, error)
@@ -21,9 +24,13 @@ type IUserClient interface {
 	// Create creates a new [User] and returns the new ID.
 	Create(ctx context.Context, opts UserCreateOpts) (int, *Response, error)
 	// Update updates an existing [User] and returns the updated state.
+	//
+	// The update endpoint only returns the user ID, so Update reads the user back
+	// with an additional GET to return the persisted state.
 	Update(ctx context.Context, id int, opts UserUpdateOpts) (*User, *Response, error)
-	// Delete deletes the [User] with the given ID.
-	Delete(ctx context.Context, id int) (*Response, error)
+	// Delete deletes the [User] with the given ID and returns the number of zones
+	// that were transferred to [UserDeleteOpts.TransferToUserID].
+	Delete(ctx context.Context, id int, opts UserDeleteOpts) (int, *Response, error)
 	// SetPermissionTemplate assigns a permission template to a user via PATCH.
 	// This is a partial update; other user fields are untouched.
 	SetPermissionTemplate(ctx context.Context, id, permTemplID int) (*Response, error)

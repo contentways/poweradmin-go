@@ -18,6 +18,9 @@ type IZoneTemplateClient interface {
 	// Create creates a new [ZoneTemplate].
 	Create(ctx context.Context, opts ZoneTemplateCreateOpts) (*ZoneTemplate, *Response, error)
 	// Update updates an existing [ZoneTemplate].
+	//
+	// The update endpoint returns no data, so Update reads the template back with
+	// an additional GET to return the persisted state.
 	Update(ctx context.Context, id int, opts ZoneTemplateUpdateOpts) (*ZoneTemplate, *Response, error)
 	// Delete deletes a [ZoneTemplate].
 	Delete(ctx context.Context, id int) (*Response, error)
@@ -28,6 +31,9 @@ type IZoneTemplateClient interface {
 	// CreateRecord adds a record to a template.
 	CreateRecord(ctx context.Context, templateID int, opts ZoneTemplateRecordOpts) (*ZoneTemplateRecord, *Response, error)
 	// UpdateRecord replaces a template record.
+	//
+	// The update endpoint returns no data, so UpdateRecord reads the record back
+	// with an additional GET to return the persisted state.
 	UpdateRecord(ctx context.Context, templateID, recordID int, opts ZoneTemplateRecordOpts) (*ZoneTemplateRecord, *Response, error)
 	// DeleteRecord removes a record from a template.
 	DeleteRecord(ctx context.Context, templateID, recordID int) (*Response, error)

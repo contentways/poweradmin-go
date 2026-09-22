@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
 
 const (
@@ -150,13 +150,16 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (*Respon
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil, err
 			}
+			if !shouldRetryError(method) {
+				return nil, err
+			}
 			lastErr = err
 			continue
 		}
 
 		c.debugf("%s %s -> %d (%s)", method, path, httpResp.StatusCode, dur)
 
-		if shouldRetryStatus(httpResp.StatusCode) && attempt+1 < maxAttempts {
+		if shouldRetryStatus(method, httpResp.StatusCode) && attempt+1 < maxAttempts {
 			if err := httpResp.Body.Close(); err != nil {
 				c.debugf("close response body: %v", err)
 			}
@@ -177,12 +180,8 @@ func (c *Client) debugf(format string, args ...any) {
 
 // parse reads the response body, validates the envelope, and unmarshals the
 // inner data into result. A nil result is valid for operations that return no
-// data (e.g. DELETE). Pagination, if present in the inner payload, is attached
-// to resp.Meta.Pagination.
-//
-// To get at pagination, list-response types must embed a *schema.Pagination
-// field. Callers wanting structured access should also call
-// [Client.populatePagination] after unmarshalling.
+// data (e.g. DELETE). Envelope-level pagination is attached to
+// resp.Meta.Pagination; error responses become an [APIError].
 func (c *Client) parse(resp *Response, result any) error {
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -200,18 +199,7 @@ func (c *Client) parse(resp *Response, result any) error {
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		var apiResp schema.APIResponse
-		if json.Unmarshal(body, &apiResp) == nil && apiResp.Error != nil {
-			return &APIError{
-				StatusCode: resp.StatusCode,
-				Message:    apiResp.Error.Message,
-				Details:    apiResp.Error.Details,
-			}
-		}
-		return &APIError{
-			StatusCode: resp.StatusCode,
-			Message:    string(body),
-		}
+		return newAPIError(resp.StatusCode, body)
 	}
 
 	var apiResp schema.APIResponse
@@ -219,11 +207,7 @@ func (c *Client) parse(resp *Response, result any) error {
 		return fmt.Errorf("poweradmin: parse API response: %w", err)
 	}
 	if !apiResp.Success {
-		msg := apiResp.Message
-		if apiResp.Error != nil {
-			msg = apiResp.Error.Message
-		}
-		return &APIError{StatusCode: resp.StatusCode, Message: msg}
+		return newAPIError(resp.StatusCode, body)
 	}
 
 	if apiResp.Pagination != nil {
@@ -289,11 +273,17 @@ func (c *Client) patch(ctx context.Context, path string, body, result any) (*Res
 }
 
 func (c *Client) delete(ctx context.Context, path string) (*Response, error) {
-	resp, err := c.do(ctx, http.MethodDelete, path, nil)
+	return c.deleteWithBody(ctx, path, nil, nil)
+}
+
+// deleteWithBody sends a DELETE with an optional JSON body. A few endpoints
+// (e.g. DELETE /v2/users/{id}) take options in the request body.
+func (c *Client) deleteWithBody(ctx context.Context, path string, body, result any) (*Response, error) {
+	resp, err := c.do(ctx, http.MethodDelete, path, body)
 	if err != nil {
 		return nil, err
 	}
-	if err := c.parse(resp, nil); err != nil {
+	if err := c.parse(resp, result); err != nil {
 		return resp, err
 	}
 	return resp, nil
