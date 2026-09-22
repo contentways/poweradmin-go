@@ -150,13 +150,16 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (*Respon
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil, err
 			}
+			if !shouldRetryError(method) {
+				return nil, err
+			}
 			lastErr = err
 			continue
 		}
 
 		c.debugf("%s %s -> %d (%s)", method, path, httpResp.StatusCode, dur)
 
-		if shouldRetryStatus(httpResp.StatusCode) && attempt+1 < maxAttempts {
+		if shouldRetryStatus(method, httpResp.StatusCode) && attempt+1 < maxAttempts {
 			if err := httpResp.Body.Close(); err != nil {
 				c.debugf("close response body: %v", err)
 			}
@@ -177,12 +180,8 @@ func (c *Client) debugf(format string, args ...any) {
 
 // parse reads the response body, validates the envelope, and unmarshals the
 // inner data into result. A nil result is valid for operations that return no
-// data (e.g. DELETE). Pagination, if present in the inner payload, is attached
-// to resp.Meta.Pagination.
-//
-// To get at pagination, list-response types must embed a *schema.Pagination
-// field. Callers wanting structured access should also call
-// [Client.populatePagination] after unmarshalling.
+// data (e.g. DELETE). Envelope-level pagination is attached to
+// resp.Meta.Pagination; error responses become an [APIError].
 func (c *Client) parse(resp *Response, result any) error {
 	defer func() {
 		if err := resp.Body.Close(); err != nil {

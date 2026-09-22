@@ -61,10 +61,14 @@ func WithTimeout(d time.Duration) Option {
 	}
 }
 
-// WithRetry enables automatic retry on transient failures (network errors,
-// HTTP 429, and 5xx). maxAttempts is the total number of attempts including
-// the initial one — values < 2 disable retrying. Backoff defaults to
-// [DefaultBackoff]; override via [WithRetryBackoff].
+// WithRetry enables automatic retry on transient failures. maxAttempts is the
+// total number of attempts including the initial one — values < 2 disable
+// retrying. Backoff defaults to [DefaultBackoff]; override via
+// [WithRetryBackoff].
+//
+// HTTP 429 is retried for every method. Network errors and 5xx responses are
+// only retried for idempotent methods (GET, PUT, DELETE), because a failed
+// POST or PATCH may already have been applied by the server.
 func WithRetry(maxAttempts int) Option {
 	return func(c *Client) {
 		if maxAttempts < 2 {

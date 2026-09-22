@@ -140,10 +140,14 @@ _ = resp.Pagination // *schema.Pagination
 
 ## Retries
 
-`WithRetry(n)` enables automatic replays on transient failures (network
-errors, HTTP 429, 5xx) with exponential backoff and jitter. `n` is the
-total number of attempts including the first one; values below 2 disable
-retrying.
+`WithRetry(n)` enables automatic replays on transient failures with
+exponential backoff and jitter. `n` is the total number of attempts including
+the first one; values below 2 disable retrying.
+
+HTTP 429 is retried for every request. Network errors and 5xx responses are
+only retried for idempotent methods (GET, PUT, DELETE): a POST or PATCH that
+failed with a 502 may already have been applied by the server, and replaying
+it could create a duplicate zone or record.
 
 ```go
 poweradmin.WithRetry(5)
