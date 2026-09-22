@@ -24,15 +24,37 @@ against Poweradmin older than 4.3.0, and a newer line against 4.3.0 and newer.
 
 ### Upgrading from v3
 
-- Change imports from `.../poweradmin-go/v3/poweradmin` to
+Breaking changes:
+
+- Imports move from `.../poweradmin-go/v3/poweradmin` to
   `.../poweradmin-go/v4/poweradmin`.
-- `ZoneUpdateOpts.Account` was removed. The Poweradmin API cannot change a
-  zone's account after creation, so the field never had an effect; set the
-  account via `ZoneCreateOpts` instead.
-- `ZoneUpdateOpts.Masters` now actually updates the masters, and the new
-  `ZoneUpdateOpts.Name` renames a zone.
-- `APIError.Message` now carries the API's message (e.g. `Zone already exists`)
+- `UserUpdateOpts`, `GroupUpdateOpts` and `RecordUpdateOpts` use pointer
+  fields; only non-nil fields are sent. Build them with `poweradmin.Ptr`:
+  `RecordUpdateOpts{Content: poweradmin.Ptr("192.0.2.10")}`.
+- `UserClient.Delete(ctx, id, UserDeleteOpts)` returns the number of
+  transferred zones. Set `TransferToUserID` when the user still owns zones.
+- `ZoneCreateOpts.Template` (string) is now `TemplateID` (int, 0 = none).
+- `ZoneUpdateOpts.Account` was removed: the API cannot change the account
+  after creation, so the field never had an effect.
+- `Zone.SOASerial` and `Zone.DNSSECSigned` were removed because no Poweradmin
+  release returns them; use `ZoneClient.GetDNSSEC` for the DNSSEC status.
+- `Record.ZoneID` is an `int` instead of `int64`.
+
+Fixes and additions that change behaviour:
+
+- Numeric record IDs returned by the API are decoded correctly.
+- `APIError.Message` carries the API's message (e.g. `Zone already exists`)
   instead of the raw JSON response body.
+- `ZoneUpdateOpts.Masters` now actually updates the masters; the new
+  `ZoneUpdateOpts.Name` renames a zone.
+- `User.Update`, `ZoneTemplate.Update` and `ZoneTemplate.UpdateRecord` return
+  the persisted object. Because the API returns no data for these calls, each
+  performs an additional GET.
+- `ZoneCreateOpts` supports `EnableDNSSEC`, `OwnerUserID`, `GroupIDs` and
+  `WithoutUserOwner`; `GroupUpdateOpts` supports `PermTemplID`.
+- `Zone.GetByName` and `User.GetByName` use the server-side filters.
+- With `WithRetry`, POST and PATCH are no longer replayed on 5xx or network
+  errors (see [Retries](#retries)).
 
 ## Installation
 
