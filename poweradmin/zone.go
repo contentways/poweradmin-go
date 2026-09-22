@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 
 	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
@@ -113,12 +114,18 @@ func (z *ZoneClient) GetByID(ctx context.Context, id int) (*Zone, *Response, err
 }
 
 // GetByName returns a single [Zone] by its DNS name.
-// Performs a list + linear search across all pages — no dedicated API endpoint exists.
+//
+// It uses the server-side exact-match filter (?name=) of the list endpoint
+// and still compares names client-side, so it also works against servers
+// that ignore the filter; there it falls back to paging through all zones.
+// Like all list results, the returned zone only carries ID, Name, Type and
+// CreatedAt.
 func (z *ZoneClient) GetByName(ctx context.Context, name string) (*Zone, *Response, error) {
-	// TODO: replace with a server-side filter once the Poweradmin API gains one.
 	opts := ListOpts{Page: 1, PerPage: 100}
 	for {
-		zones, resp, err := z.List(ctx, opts)
+		q := opts.values()
+		q.Set("name", name)
+		zones, resp, err := z.list(ctx, q)
 		if err != nil {
 			return nil, resp, err
 		}
@@ -137,7 +144,11 @@ func (z *ZoneClient) GetByName(ctx context.Context, name string) (*Zone, *Respon
 // List returns one page of [Zone]s. The list endpoint only returns ID, Name,
 // Type and CreatedAt; see [Zone].
 func (z *ZoneClient) List(ctx context.Context, opts ListOpts) ([]*Zone, *Response, error) {
-	path := appendQuery("zones", opts.values())
+	return z.list(ctx, opts.values())
+}
+
+func (z *ZoneClient) list(ctx context.Context, query url.Values) ([]*Zone, *Response, error) {
+	path := appendQuery("zones", query)
 	var result schema.ZoneListResponse
 	resp, err := z.client.get(ctx, path, &result)
 	if err != nil {

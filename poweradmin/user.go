@@ -5,6 +5,7 @@ package poweradmin
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
@@ -64,12 +65,17 @@ type UserClient struct {
 }
 
 // GetByName returns a single [User] by username.
-// Paginates the list endpoint server-side and matches client-side; the API
-// has no dedicated username lookup.
+//
+// It uses the server-side exact-match filter (?username=) of the list
+// endpoint and still compares usernames client-side, so it also works
+// against servers that ignore the filter; there it falls back to paging
+// through all users.
 func (u *UserClient) GetByName(ctx context.Context, username string) (*User, *Response, error) {
 	opts := ListOpts{Page: 1, PerPage: 100}
 	for {
-		users, resp, err := u.List(ctx, opts)
+		q := opts.values()
+		q.Set("username", username)
+		users, resp, err := u.list(ctx, q)
 		if err != nil {
 			return nil, resp, err
 		}
@@ -98,7 +104,11 @@ func (u *UserClient) GetByID(ctx context.Context, id int) (*User, *Response, err
 
 // List returns one page of [User]s.
 func (u *UserClient) List(ctx context.Context, opts ListOpts) ([]*User, *Response, error) {
-	path := appendQuery("users", opts.values())
+	return u.list(ctx, opts.values())
+}
+
+func (u *UserClient) list(ctx context.Context, query url.Values) ([]*User, *Response, error) {
+	path := appendQuery("users", query)
 	var result schema.UserListResponse
 	resp, err := u.client.get(ctx, path, &result)
 	if err != nil {

@@ -9,8 +9,11 @@ import (
 // IUserClient ...
 type IUserClient interface {
 	// GetByName returns a single [User] by username.
-	// Paginates the list endpoint server-side and matches client-side; the API
-	// has no dedicated username lookup.
+	//
+	// It uses the server-side exact-match filter (?username=) of the list
+	// endpoint and still compares usernames client-side, so it also works
+	// against servers that ignore the filter; there it falls back to paging
+	// through all users.
 	GetByName(ctx context.Context, username string) (*User, *Response, error)
 	// GetByID returns a single [User] by ID.
 	GetByID(ctx context.Context, id int) (*User, *Response, error)

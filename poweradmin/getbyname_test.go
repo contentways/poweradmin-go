@@ -90,3 +90,53 @@ func TestPermissionTemplateGetByName(t *testing.T) {
 		t.Errorf("template = %+v", tpl)
 	}
 }
+
+// GetByName sends the exact-match filter; a filtering server answers with a
+// single, unpaginated result.
+func TestZoneGetByNameUsesServerFilter(t *testing.T) {
+	var gotName string
+	var calls int
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		gotName = r.URL.Query().Get("name")
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"zones": []map[string]any{
+			{"id": 9, "name": "target.com", "type": "MASTER", "created_at": "2026-01-01 00:00:00"},
+		}})
+	})
+	z, _, err := client.Zone.GetByName(context.Background(), "target.com")
+	if err != nil {
+		t.Fatalf("GetByName: %v", err)
+	}
+	if gotName != "target.com" || calls != 1 {
+		t.Errorf("name filter = %q, calls = %d; want target.com, 1", gotName, calls)
+	}
+	if z.ID != 9 || z.CreatedAt != "2026-01-01 00:00:00" {
+		t.Errorf("zone = %+v", z)
+	}
+}
+
+func TestUserGetByNameUsesServerFilter(t *testing.T) {
+	var gotUsername string
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		gotUsername = r.URL.Query().Get("username")
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"users": []map[string]any{
+			{"user_id": 4, "username": "carol"},
+		}})
+	})
+	u, _, err := client.User.GetByName(context.Background(), "carol")
+	if err != nil {
+		t.Fatalf("GetByName: %v", err)
+	}
+	if gotUsername != "carol" || u.ID != 4 {
+		t.Errorf("username filter = %q, user = %+v", gotUsername, u)
+	}
+}
+
+func TestUserGetByNameFilteredNotFound(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"users": []map[string]any{}})
+	})
+	if _, _, err := client.User.GetByName(context.Background(), "nobody"); !IsNotFound(err) {
+		t.Errorf("err = %v, want not found", err)
+	}
+}
