@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -77,4 +78,37 @@ func writeError(t *testing.T, w http.ResponseWriter, status int, message string)
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		t.Fatalf("encode error envelope: %v", err)
 	}
+}
+
+// decodeBody decodes the JSON request body into v.
+func decodeBody(t *testing.T, r *http.Request, v any) {
+	t.Helper()
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		t.Fatalf("decode request body: %v", err)
+	}
+}
+
+// equalJSONMaps compares a decoded JSON object against the expected keys and
+// values. Numbers must be given as float64-compatible values (int is fine).
+func equalJSONMaps(got, want map[string]any) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for k, w := range want {
+		g, ok := got[k]
+		if !ok {
+			return false
+		}
+		switch wv := w.(type) {
+		case int:
+			if gf, ok := g.(float64); !ok || gf != float64(wv) {
+				return false
+			}
+		default:
+			if !reflect.DeepEqual(g, w) {
+				return false
+			}
+		}
+	}
+	return true
 }

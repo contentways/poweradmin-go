@@ -123,19 +123,24 @@ func (c *ZoneTemplateClient) Create(ctx context.Context, opts ZoneTemplateCreate
 }
 
 // Update updates an existing [ZoneTemplate].
+//
+// The update endpoint returns no data, so Update reads the template back with
+// an additional GET to return the persisted state.
 func (c *ZoneTemplateClient) Update(ctx context.Context, id int, opts ZoneTemplateUpdateOpts) (*ZoneTemplate, *Response, error) {
 	req := schema.ZoneTemplateRequest{
 		Name:        opts.Name,
 		Description: opts.Description,
 		IsGlobal:    opts.IsGlobal,
 	}
-	var result schema.ZoneTemplateResponse
-	resp, err := c.client.put(ctx, fmt.Sprintf("zone-templates/%d", id), req, &result)
+	resp, err := c.client.put(ctx, fmt.Sprintf("zone-templates/%d", id), req, nil)
 	if err != nil {
 		return nil, resp, err
 	}
-	tpl := zoneTemplateFromSchema(result.Template)
-	return &tpl, resp, nil
+	tpl, _, err := c.GetByID(ctx, id)
+	if err != nil {
+		return nil, resp, err
+	}
+	return tpl, resp, nil
 }
 
 // Delete deletes a [ZoneTemplate].
@@ -196,6 +201,9 @@ func (c *ZoneTemplateClient) CreateRecord(ctx context.Context, templateID int, o
 }
 
 // UpdateRecord replaces a template record.
+//
+// The update endpoint returns no data, so UpdateRecord reads the record back
+// with an additional GET to return the persisted state.
 func (c *ZoneTemplateClient) UpdateRecord(ctx context.Context, templateID, recordID int, opts ZoneTemplateRecordOpts) (*ZoneTemplateRecord, *Response, error) {
 	req := schema.ZoneTemplateRecordRequest{
 		Name:     opts.Name,
@@ -204,13 +212,15 @@ func (c *ZoneTemplateClient) UpdateRecord(ctx context.Context, templateID, recor
 		TTL:      opts.TTL,
 		Priority: opts.Priority,
 	}
-	var result schema.ZoneTemplateRecordResponse
-	resp, err := c.client.put(ctx, fmt.Sprintf("zone-templates/%d/records/%d", templateID, recordID), req, &result)
+	resp, err := c.client.put(ctx, fmt.Sprintf("zone-templates/%d/records/%d", templateID, recordID), req, nil)
 	if err != nil {
 		return nil, resp, err
 	}
-	rec := zoneTemplateRecordFromSchema(result.Record)
-	return &rec, resp, nil
+	rec, _, err := c.GetRecord(ctx, templateID, recordID)
+	if err != nil {
+		return nil, resp, err
+	}
+	return rec, resp, nil
 }
 
 // DeleteRecord removes a record from a template.
