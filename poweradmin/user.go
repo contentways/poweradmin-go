@@ -51,6 +51,13 @@ type UserUpdateOpts struct {
 	UseLdap     *bool
 }
 
+// UserDeleteOpts configures a user deletion.
+type UserDeleteOpts struct {
+	// TransferToUserID receives the zones owned by the deleted user. The API
+	// rejects the deletion with 400 if the user owns zones and this is nil.
+	TransferToUserID *int
+}
+
 // UserClient provides access to the user-related Poweradmin API endpoints.
 type UserClient struct {
 	client *Client
@@ -168,9 +175,19 @@ func (u *UserClient) Update(ctx context.Context, id int, opts UserUpdateOpts) (*
 	return user, resp, nil
 }
 
-// Delete deletes the [User] with the given ID.
-func (u *UserClient) Delete(ctx context.Context, id int) (*Response, error) {
-	return u.client.delete(ctx, fmt.Sprintf("users/%d", id))
+// Delete deletes the [User] with the given ID and returns the number of zones
+// that were transferred to [UserDeleteOpts.TransferToUserID].
+func (u *UserClient) Delete(ctx context.Context, id int, opts UserDeleteOpts) (int, *Response, error) {
+	var body any
+	if opts.TransferToUserID != nil {
+		body = schema.UserDeleteRequest{TransferToUserID: opts.TransferToUserID}
+	}
+	var result schema.UserDeleteResponse
+	resp, err := u.client.deleteWithBody(ctx, fmt.Sprintf("users/%d", id), body, &result)
+	if err != nil {
+		return 0, resp, err
+	}
+	return result.ZonesAffected, resp, nil
 }
 
 // SetPermissionTemplate assigns a permission template to a user via PATCH.

@@ -25,8 +25,9 @@ type IUserClient interface {
 	// The update endpoint only returns the user ID, so Update reads the user back
 	// with an additional GET to return the persisted state.
 	Update(ctx context.Context, id int, opts UserUpdateOpts) (*User, *Response, error)
-	// Delete deletes the [User] with the given ID.
-	Delete(ctx context.Context, id int) (*Response, error)
+	// Delete deletes the [User] with the given ID and returns the number of zones
+	// that were transferred to [UserDeleteOpts.TransferToUserID].
+	Delete(ctx context.Context, id int, opts UserDeleteOpts) (int, *Response, error)
 	// SetPermissionTemplate assigns a permission template to a user via PATCH.
 	// This is a partial update; other user fields are untouched.
 	SetPermissionTemplate(ctx context.Context, id, permTemplID int) (*Response, error)

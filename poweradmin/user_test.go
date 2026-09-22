@@ -4,6 +4,8 @@ package poweradmin
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"testing"
@@ -133,20 +135,52 @@ func TestUserUpdate(t *testing.T) {
 }
 
 func TestUserDelete(t *testing.T) {
-	deleted := false
+	var body []byte
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete || r.URL.Path != "/api/v2/users/5" {
 			t.Errorf("method/path = %s %s", r.Method, r.URL.Path)
 		}
-		deleted = true
-		writeEnvelope(t, w, http.StatusOK, nil)
+		body, _ = io.ReadAll(r.Body)
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"zones_affected": 0})
 	})
-	_, err := client.User.Delete(context.Background(), 5)
+	n, _, err := client.User.Delete(context.Background(), 5, UserDeleteOpts{})
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
-	if !deleted {
-		t.Error("DELETE was not called")
+	if len(body) != 0 {
+		t.Errorf("body = %s, want no body without transfer target", body)
+	}
+	if n != 0 {
+		t.Errorf("zones affected = %d, want 0", n)
+	}
+}
+
+func TestUserDeleteTransfersZones(t *testing.T) {
+	var got map[string]any
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		decodeBody(t, r, &got)
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"zones_affected": 3})
+	})
+	n, _, err := client.User.Delete(context.Background(), 5, UserDeleteOpts{TransferToUserID: Ptr(2)})
+	if err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if want := map[string]any{"transfer_to_user_id": 2}; !equalJSONMaps(got, want) {
+		t.Errorf("body = %v, want %v", got, want)
+	}
+	if n != 3 {
+		t.Errorf("zones affected = %d, want 3", n)
+	}
+}
+
+func TestUserDeleteOwnsZonesError(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeError(t, w, http.StatusBadRequest, "User owns zones. Please specify transfer_to_user_id to transfer zones to another user.")
+	})
+	_, _, err := client.User.Delete(context.Background(), 5, UserDeleteOpts{})
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusBadRequest {
+		t.Fatalf("err = %v, want 400 APIError", err)
 	}
 }
 

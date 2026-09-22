@@ -292,6 +292,17 @@ type UserUpdateRequest struct {
 	UseLdap     *bool   `json:"use_ldap,omitempty"`
 }
 
+// UserDeleteRequest is the optional body of DELETE /v2/users/{id}. The server
+// requires TransferToUserID when the user still owns zones.
+type UserDeleteRequest struct {
+	TransferToUserID *int `json:"transfer_to_user_id,omitempty"`
+}
+
+// UserDeleteResponse is returned under data by DELETE /v2/users/{id}.
+type UserDeleteResponse struct {
+	ZonesAffected int `json:"zones_affected"`
+}
+
 // UserPatchRequest is sent via PATCH /v2/users/{id} for partial updates such as
 // assigning a permission template.
 type UserPatchRequest struct {

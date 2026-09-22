@@ -274,11 +274,17 @@ func (c *Client) patch(ctx context.Context, path string, body, result any) (*Res
 }
 
 func (c *Client) delete(ctx context.Context, path string) (*Response, error) {
-	resp, err := c.do(ctx, http.MethodDelete, path, nil)
+	return c.deleteWithBody(ctx, path, nil, nil)
+}
+
+// deleteWithBody sends a DELETE with an optional JSON body. A few endpoints
+// (e.g. DELETE /v2/users/{id}) take options in the request body.
+func (c *Client) deleteWithBody(ctx context.Context, path string, body, result any) (*Response, error) {
+	resp, err := c.do(ctx, http.MethodDelete, path, body)
 	if err != nil {
 		return nil, err
 	}
-	if err := c.parse(resp, nil); err != nil {
+	if err := c.parse(resp, result); err != nil {
 		return resp, err
 	}
 	return resp, nil
