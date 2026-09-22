@@ -63,14 +63,16 @@ func writeEnvelopeWithPagination(t *testing.T, w http.ResponseWriter, status int
 	}
 }
 
-// writeError writes a Poweradmin-style error envelope.
+// writeError writes an error envelope in the shape Poweradmin's v2 API
+// actually returns: no "error" object, the message sits at envelope level.
 func writeError(t *testing.T, w http.ResponseWriter, status int, message string) {
 	t.Helper()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	payload := map[string]any{
 		"success": false,
-		"error":   map[string]any{"message": message},
+		"message": message,
+		"data":    nil,
 	}
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		t.Fatalf("encode error envelope: %v", err)

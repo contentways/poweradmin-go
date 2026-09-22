@@ -200,18 +200,7 @@ func (c *Client) parse(resp *Response, result any) error {
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		var apiResp schema.APIResponse
-		if json.Unmarshal(body, &apiResp) == nil && apiResp.Error != nil {
-			return &APIError{
-				StatusCode: resp.StatusCode,
-				Message:    apiResp.Error.Message,
-				Details:    apiResp.Error.Details,
-			}
-		}
-		return &APIError{
-			StatusCode: resp.StatusCode,
-			Message:    string(body),
-		}
+		return newAPIError(resp.StatusCode, body)
 	}
 
 	var apiResp schema.APIResponse
@@ -219,11 +208,7 @@ func (c *Client) parse(resp *Response, result any) error {
 		return fmt.Errorf("poweradmin: parse API response: %w", err)
 	}
 	if !apiResp.Success {
-		msg := apiResp.Message
-		if apiResp.Error != nil {
-			msg = apiResp.Error.Message
-		}
-		return &APIError{StatusCode: resp.StatusCode, Message: msg}
+		return newAPIError(resp.StatusCode, body)
 	}
 
 	if apiResp.Pagination != nil {

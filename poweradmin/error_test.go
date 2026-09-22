@@ -55,3 +55,48 @@ func TestIsNotFound(t *testing.T) {
 		})
 	}
 }
+
+func TestNewAPIError(t *testing.T) {
+	tests := []struct {
+		name        string
+		body        string
+		wantMessage string
+		wantDetails string
+	}{
+		{
+			name:        "poweradmin v2 error envelope",
+			body:        `{"success":false,"message":"Zone already exists","data":null}`,
+			wantMessage: "Zone already exists",
+		},
+		{
+			name:        "error object takes precedence",
+			body:        `{"success":false,"message":"Request failed","error":{"message":"Invalid name","details":"label too long"}}`,
+			wantMessage: "Invalid name",
+			wantDetails: "label too long",
+		},
+		{
+			name:        "non-JSON body from proxy",
+			body:        "<html>502 Bad Gateway</html>\n",
+			wantMessage: "<html>502 Bad Gateway</html>",
+		},
+		{
+			name:        "envelope without any message",
+			body:        `{"success":false}`,
+			wantMessage: `{"success":false}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := newAPIError(409, []byte(tt.body))
+			if got.StatusCode != 409 {
+				t.Errorf("StatusCode = %d, want 409", got.StatusCode)
+			}
+			if got.Message != tt.wantMessage {
+				t.Errorf("Message = %q, want %q", got.Message, tt.wantMessage)
+			}
+			if got.Details != tt.wantDetails {
+				t.Errorf("Details = %q, want %q", got.Details, tt.wantDetails)
+			}
+		})
+	}
+}
