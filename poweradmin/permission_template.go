@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
 
 // PermissionTemplate represents a named bundle of permissions that can be

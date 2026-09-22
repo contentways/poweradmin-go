@@ -4,26 +4,40 @@ A Go client library for the [Poweradmin](https://www.poweradmin.org/) DNS
 management API (v2).
 
 ```go
-import "github.com/contentways/poweradmin-go/poweradmin"
+import "github.com/contentways/poweradmin-go/v4/poweradmin"
 ```
 
 ## Version compatibility
 
-| poweradmin-go | Poweradmin | Go     |
-| ------------- | ---------- | ------ |
-| 1.1.x         | 4.3.0+     | ≥ 1.26 |
-| 1.0.x         | < 4.3.0    | ≥ 1.26 |
+| poweradmin-go | Import path                                   | Poweradmin | Go     |
+| ------------- | --------------------------------------------- | ---------- | ------ |
+| 4.x           | `github.com/contentways/poweradmin-go/v4/...` | 4.3.0+     | ≥ 1.26 |
+| 3.x           | `github.com/contentways/poweradmin-go/v3/...` | 4.3.0+     | ≥ 1.26 |
+| 1.1.x         | `contentways.dev/contentways/poweradmin-go/...` | 4.3.0+   | ≥ 1.26 |
+| 1.0.x         | `contentways.dev/contentways/poweradmin-go/...` | < 4.3.0  | ≥ 1.26 |
 
 Poweradmin 4.3.0 standardized the v2 API so every endpoint wraps its payload
 under a named key (`data.zones`, `data.records`, `data.rrset`, …). Earlier
 releases returned most collection and single-resource endpoints as bare
 arrays/objects. Pick the client line that matches your server: use 1.0.x
-against Poweradmin older than 4.3.0, and 1.1.x against 4.3.0 and newer.
+against Poweradmin older than 4.3.0, and a newer line against 4.3.0 and newer.
+
+### Upgrading from v3
+
+- Change imports from `.../poweradmin-go/v3/poweradmin` to
+  `.../poweradmin-go/v4/poweradmin`.
+- `ZoneUpdateOpts.Account` was removed. The Poweradmin API cannot change a
+  zone's account after creation, so the field never had an effect; set the
+  account via `ZoneCreateOpts` instead.
+- `ZoneUpdateOpts.Masters` now actually updates the masters, and the new
+  `ZoneUpdateOpts.Name` renames a zone.
+- `APIError.Message` now carries the API's message (e.g. `Zone already exists`)
+  instead of the raw JSON response body.
 
 ## Installation
 
 ```sh
-go get github.com/contentways/poweradmin-go
+go get github.com/contentways/poweradmin-go/v4
 ```
 
 Requires Go 1.26 or newer.
@@ -38,7 +52,7 @@ import (
     "fmt"
     "log"
 
-    "github.com/contentways/poweradmin-go/poweradmin"
+    "github.com/contentways/poweradmin-go/v4/poweradmin"
 )
 
 func main() {

@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
 
 // ZoneTemplate represents a Poweradmin zone template.

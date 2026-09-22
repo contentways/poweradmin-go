@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
 
 // APIError represents an error returned by the Poweradmin API.

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 package poweradmin
 
-import "github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+import "github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 
 // This file holds the schema ↔ domain conversion functions.
 // Hand-written rather than goverter-generated to avoid a bootstrap dependency

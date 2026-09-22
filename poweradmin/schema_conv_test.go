@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/contentways/poweradmin-go/v3/poweradmin/schema"
+	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
 
 func TestZoneRoundtrip(t *testing.T) {
