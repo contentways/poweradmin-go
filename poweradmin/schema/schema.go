@@ -167,13 +167,15 @@ type RecordCreateRequest struct {
 	CreatePTR bool   `json:"create_ptr,omitempty"`
 }
 
+// RecordUpdateRequest is sent via PUT /v2/zones/{id}/records/{id}. Omitted
+// fields keep their current value on the server.
 type RecordUpdateRequest struct {
-	Name     string `json:"name,omitempty"`
-	Type     string `json:"type,omitempty"`
-	Content  string `json:"content,omitempty"`
-	TTL      *int   `json:"ttl,omitempty"`
-	Priority *int   `json:"priority,omitempty"`
-	Disabled *bool  `json:"disabled,omitempty"`
+	Name     *string `json:"name,omitempty"`
+	Type     *string `json:"type,omitempty"`
+	Content  *string `json:"content,omitempty"`
+	TTL      *int    `json:"ttl,omitempty"`
+	Priority *int    `json:"priority,omitempty"`
+	Disabled *bool   `json:"disabled,omitempty"`
 }
 
 type BulkRecordOperation struct {
@@ -277,16 +279,17 @@ type UserCreateRequest struct {
 	UseLdap     bool   `json:"use_ldap,omitempty"`
 }
 
+// UserUpdateRequest is sent via PUT /v2/users/{id}. Omitted fields keep their
+// current value on the server; the server answers with data.user_id only.
 type UserUpdateRequest struct {
-	Username    string `json:"username,omitempty"`
-	Password    string `json:"password,omitempty"`
-	Fullname    string `json:"fullname,omitempty"`
-	Email       string `json:"email,omitempty"`
-	Description string `json:"description,omitempty"`
-	// Active must be sent explicitly even for false to take effect — see API docs.
-	Active    *bool `json:"active,omitempty"`
-	PermTempl int   `json:"perm_templ,omitempty"`
-	UseLdap   *bool `json:"use_ldap,omitempty"`
+	Username    *string `json:"username,omitempty"`
+	Password    *string `json:"password,omitempty"`
+	Fullname    *string `json:"fullname,omitempty"`
+	Email       *string `json:"email,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Active      *bool   `json:"active,omitempty"`
+	PermTempl   *int    `json:"perm_templ,omitempty"`
+	UseLdap     *bool   `json:"use_ldap,omitempty"`
 }
 
 // UserPatchRequest is sent via PATCH /v2/users/{id} for partial updates such as
@@ -369,10 +372,12 @@ type GroupCreateRequest struct {
 	PermTemplID int    `json:"perm_templ_id"`
 }
 
+// GroupUpdateRequest is sent via PUT /v2/groups/{id}. Omitted fields keep
+// their current value on the server.
 type GroupUpdateRequest struct {
-	Name        string  `json:"name,omitempty"`
+	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
-	PermTemplID int     `json:"perm_templ_id,omitempty"`
+	PermTemplID *int    `json:"perm_templ_id,omitempty"`
 }
 
 type GroupMember struct {

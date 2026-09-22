@@ -157,12 +157,11 @@ func TestRecordUpdate(t *testing.T) {
 			},
 		})
 	})
-	ttl := 600
 	rec, _, err := client.Record.Update(context.Background(), 5, "rec-99", RecordUpdateOpts{
-		Name:    "www.example.com",
-		Type:    "A",
-		Content: "5.6.7.8",
-		TTL:     &ttl,
+		Name:    Ptr("www.example.com"),
+		Type:    Ptr("A"),
+		Content: Ptr("5.6.7.8"),
+		TTL:     Ptr(600),
 	})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
@@ -221,5 +220,24 @@ func TestRecordNumericIDs(t *testing.T) {
 	}
 	if id != "1235" {
 		t.Errorf("Create ID = %q, want 1235", id)
+	}
+}
+
+// Only the fields set in RecordUpdateOpts are sent; an explicit zero value
+// (e.g. disabled=false) must still reach the server.
+func TestRecordUpdateSendsOnlySetFields(t *testing.T) {
+	var got map[string]any
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		decodeBody(t, r, &got)
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"record": map[string]any{"id": 99, "content": "192.0.2.10"}})
+	})
+	if _, _, err := client.Record.Update(context.Background(), 5, "99", RecordUpdateOpts{
+		Content:  Ptr("192.0.2.10"),
+		Disabled: Ptr(false),
+	}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if want := map[string]any{"content": "192.0.2.10", "disabled": false}; !equalJSONMaps(got, want) {
+		t.Errorf("body = %v, want %v", got, want)
 	}
 }

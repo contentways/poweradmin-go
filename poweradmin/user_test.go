@@ -95,27 +95,39 @@ func TestUserCreate(t *testing.T) {
 	}
 }
 
+// PUT /v2/users/{id} only returns {"user_id": ...}; Update reads the user back.
 func TestUserUpdate(t *testing.T) {
+	var putBody map[string]any
+	var calls []string
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPut || r.URL.Path != "/api/v2/users/5" {
-			t.Errorf("method/path = %s %s", r.Method, r.URL.Path)
+		calls = append(calls, r.Method)
+		if r.URL.Path != "/api/v2/users/5" {
+			t.Errorf("path = %s", r.URL.Path)
 		}
-		writeEnvelope(t, w, http.StatusOK, map[string]any{
-			"user": map[string]any{
-				"user_id":  5,
-				"username": "alice",
-				"email":    "newalice@example.com",
-			},
-		})
+		switch r.Method {
+		case http.MethodPut:
+			decodeBody(t, r, &putBody)
+			writeEnvelope(t, w, http.StatusOK, map[string]any{"user_id": 5})
+		case http.MethodGet:
+			writeEnvelope(t, w, http.StatusOK, map[string]any{"user": map[string]any{
+				"user_id": 5, "username": "alice", "email": "newalice@example.com", "active": true,
+			}})
+		default:
+			t.Errorf("unexpected method %s", r.Method)
+		}
 	})
-	active := true
-	user, _, err := client.User.Update(context.Background(), 5, UserUpdateOpts{
-		Username: "alice", Email: "newalice@example.com", Active: &active,
-	})
+	email := "newalice@example.com"
+	user, _, err := client.User.Update(context.Background(), 5, UserUpdateOpts{Email: Ptr(email), Active: Ptr(true)})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
 	}
-	if user.Email != "newalice@example.com" {
+	if len(calls) != 2 || calls[0] != http.MethodPut || calls[1] != http.MethodGet {
+		t.Errorf("calls = %v, want [PUT GET]", calls)
+	}
+	if want := map[string]any{"email": email, "active": true}; !equalJSONMaps(putBody, want) {
+		t.Errorf("PUT body = %v, want %v", putBody, want)
+	}
+	if user.ID != 5 || user.Email != email || !user.Active {
 		t.Errorf("user = %+v", user)
 	}
 }

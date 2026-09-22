@@ -21,6 +21,9 @@ type IUserClient interface {
 	// Create creates a new [User] and returns the new ID.
 	Create(ctx context.Context, opts UserCreateOpts) (int, *Response, error)
 	// Update updates an existing [User] and returns the updated state.
+	//
+	// The update endpoint only returns the user ID, so Update reads the user back
+	// with an additional GET to return the persisted state.
 	Update(ctx context.Context, id int, opts UserUpdateOpts) (*User, *Response, error)
 	// Delete deletes the [User] with the given ID.
 	Delete(ctx context.Context, id int) (*Response, error)

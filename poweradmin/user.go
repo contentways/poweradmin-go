@@ -39,14 +39,15 @@ type UserCreateOpts struct {
 }
 
 // UserUpdateOpts configures a user update request.
+// Only non-nil fields are sent; omitted fields keep their current value.
 type UserUpdateOpts struct {
-	Username    string
-	Password    string
-	Fullname    string
-	Email       string
-	Description string
+	Username    *string
+	Password    *string
+	Fullname    *string
+	Email       *string
+	Description *string
 	Active      *bool
-	PermTempl   int
+	PermTempl   *int
 	UseLdap     *bool
 }
 
@@ -142,6 +143,9 @@ func (u *UserClient) Create(ctx context.Context, opts UserCreateOpts) (int, *Res
 }
 
 // Update updates an existing [User] and returns the updated state.
+//
+// The update endpoint only returns the user ID, so Update reads the user back
+// with an additional GET to return the persisted state.
 func (u *UserClient) Update(ctx context.Context, id int, opts UserUpdateOpts) (*User, *Response, error) {
 	req := schema.UserUpdateRequest{
 		Username:    opts.Username,
@@ -153,13 +157,15 @@ func (u *UserClient) Update(ctx context.Context, id int, opts UserUpdateOpts) (*
 		PermTempl:   opts.PermTempl,
 		UseLdap:     opts.UseLdap,
 	}
-	var result schema.UserResponse
-	resp, err := u.client.put(ctx, fmt.Sprintf("users/%d", id), req, &result)
+	resp, err := u.client.put(ctx, fmt.Sprintf("users/%d", id), req, nil)
 	if err != nil {
 		return nil, resp, err
 	}
-	user := UserFromSchema(result.User)
-	return &user, resp, nil
+	user, _, err := u.GetByID(ctx, id)
+	if err != nil {
+		return nil, resp, err
+	}
+	return user, resp, nil
 }
 
 // Delete deletes the [User] with the given ID.

@@ -117,22 +117,27 @@ func TestGroupCreate(t *testing.T) {
 }
 
 func TestGroupUpdate(t *testing.T) {
+	var got map[string]any
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut || r.URL.Path != "/api/v2/groups/3" {
 			t.Errorf("method/path = %s %s", r.Method, r.URL.Path)
 		}
+		decodeBody(t, r, &got)
 		writeEnvelope(t, w, http.StatusOK, map[string]any{
-			"group": map[string]any{"id": 3, "name": "ops-updated"},
+			"group": map[string]any{"id": 3, "name": "ops-updated", "description": "", "perm_templ_id": 4},
 		})
 	})
-	desc := "updated"
 	group, _, err := client.Group.Update(context.Background(), 3, GroupUpdateOpts{
-		Name: "ops-updated", Description: &desc,
+		Name: Ptr("ops-updated"), Description: Ptr(""), PermTemplID: Ptr(4),
 	})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
 	}
-	if group.Name != "ops-updated" {
+	// An empty description is an explicit "clear", so it must be sent.
+	if want := map[string]any{"name": "ops-updated", "description": "", "perm_templ_id": 4}; !equalJSONMaps(got, want) {
+		t.Errorf("body = %v, want %v", got, want)
+	}
+	if group.Name != "ops-updated" || group.PermTemplID != 4 {
 		t.Errorf("group = %+v", group)
 	}
 }

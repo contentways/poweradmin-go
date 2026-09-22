@@ -34,11 +34,11 @@ type RecordCreateOpts struct {
 }
 
 // RecordUpdateOpts configures a record update request.
-// Pointer fields are only sent when non-nil.
+// Only non-nil fields are sent; omitted fields keep their current value.
 type RecordUpdateOpts struct {
-	Name     string
-	Type     string
-	Content  string
+	Name     *string
+	Type     *string
+	Content  *string
 	TTL      *int
 	Priority *int
 	Disabled *bool
