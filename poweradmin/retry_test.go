@@ -14,9 +14,9 @@ import (
 )
 
 func TestRetryOn5xxThenSuccess(t *testing.T) {
-	var attempts int32
+	var attempts atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		n := atomic.AddInt32(&attempts, 1)
+		n := attempts.Add(1)
 		if n < 3 {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
@@ -38,15 +38,15 @@ func TestRetryOn5xxThenSuccess(t *testing.T) {
 	if _, _, err := c.Zone.List(context.Background(), ListOpts{}); err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if got := atomic.LoadInt32(&attempts); got != 3 {
+	if got := attempts.Load(); got != 3 {
 		t.Errorf("attempts = %d, want 3", got)
 	}
 }
 
 func TestRetryExhausted(t *testing.T) {
-	var attempts int32
+	var attempts atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&attempts, 1)
+		attempts.Add(1)
 		w.WriteHeader(http.StatusBadGateway)
 	}))
 	t.Cleanup(srv.Close)
@@ -61,15 +61,15 @@ func TestRetryExhausted(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error after exhausting retries")
 	}
-	if got := atomic.LoadInt32(&attempts); got != 3 {
+	if got := attempts.Load(); got != 3 {
 		t.Errorf("attempts = %d, want 3", got)
 	}
 }
 
 func TestRetryNotOn4xx(t *testing.T) {
-	var attempts int32
+	var attempts atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&attempts, 1)
+		attempts.Add(1)
 		writeError(t, w, http.StatusBadRequest, "bad")
 	}))
 	t.Cleanup(srv.Close)
@@ -84,7 +84,7 @@ func TestRetryNotOn4xx(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if got := atomic.LoadInt32(&attempts); got != 1 {
+	if got := attempts.Load(); got != 1 {
 		t.Errorf("attempts = %d, want 1 (4xx must not retry)", got)
 	}
 }
@@ -140,9 +140,9 @@ func TestDebugWriter(t *testing.T) {
 // A POST that fails with 5xx may already have been applied; replaying it
 // would create duplicate zones or records.
 func TestRetryDoesNotReplayPostOn5xx(t *testing.T) {
-	var attempts int32
+	var attempts atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&attempts, 1)
+		attempts.Add(1)
 		writeError(t, w, http.StatusBadGateway, "upstream timeout")
 	}))
 	t.Cleanup(srv.Close)
@@ -153,16 +153,16 @@ func TestRetryDoesNotReplayPostOn5xx(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if got := atomic.LoadInt32(&attempts); got != 1 {
+	if got := attempts.Load(); got != 1 {
 		t.Errorf("attempts = %d, want 1 (POST must not be retried on 5xx)", got)
 	}
 }
 
 // 429 means the request was not processed, so even a POST is retried.
 func TestRetryPostOn429(t *testing.T) {
-	var attempts int32
+	var attempts atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if atomic.AddInt32(&attempts, 1) == 1 {
+		if attempts.Add(1) == 1 {
 			w.WriteHeader(http.StatusTooManyRequests)
 			return
 		}
@@ -175,7 +175,7 @@ func TestRetryPostOn429(t *testing.T) {
 	if _, _, err := c.Zone.Create(context.Background(), ZoneCreateOpts{Name: "a.com", Type: ZoneTypeMaster}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if got := atomic.LoadInt32(&attempts); got != 2 {
+	if got := attempts.Load(); got != 2 {
 		t.Errorf("attempts = %d, want 2", got)
 	}
 }
