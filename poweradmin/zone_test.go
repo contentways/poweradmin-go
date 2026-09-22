@@ -191,6 +191,48 @@ func TestZoneUpdate(t *testing.T) {
 	}
 }
 
+// The update endpoint reads "master" (singular) and "name"; it silently
+// ignores "masters" and "account".
+func TestZoneUpdateWireFields(t *testing.T) {
+	var got map[string]any
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if err := json.Unmarshal(body, &got); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		writeEnvelope(t, w, http.StatusOK, map[string]any{
+			"zone": map[string]any{
+				"id": 5, "name": "new.example.com", "type": "SLAVE",
+				"masters": "192.0.2.1,192.0.2.2:5300", "account": nil, "description": nil,
+			},
+		})
+	})
+	name := "new.example.com"
+	typ := ZoneTypeSlave
+	masters := "192.0.2.1,192.0.2.2:5300"
+	z, _, err := client.Zone.Update(context.Background(), 5, ZoneUpdateOpts{
+		Name: &name, Type: &typ, Masters: &masters,
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	want := map[string]any{"name": name, "type": "SLAVE", "master": masters}
+	if len(got) != len(want) {
+		t.Errorf("body = %v, want exactly %v", got, want)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("body[%q] = %v, want %v", k, got[k], v)
+		}
+	}
+	if _, present := got["masters"]; present {
+		t.Error(`body must not contain "masters"; the update endpoint ignores it`)
+	}
+	if z.Name != name || z.Masters != masters || z.Account != "" {
+		t.Errorf("zone = %+v", z)
+	}
+}
+
 func TestZoneDelete(t *testing.T) {
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {

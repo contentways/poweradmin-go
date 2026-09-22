@@ -42,10 +42,16 @@ type ZoneCreateOpts struct {
 
 // ZoneUpdateOpts configures a zone update request.
 // Only non-nil pointer fields are sent to the API.
+//
+// The zone account cannot be changed through the API; set it via
+// [ZoneCreateOpts] when creating the zone.
 type ZoneUpdateOpts struct {
-	Type        *ZoneType
+	// Name renames the zone (FQDN).
+	Name *string
+	Type *ZoneType
+	// Masters is a comma-separated list of master servers for SLAVE zones,
+	// e.g. "192.0.2.1,192.0.2.2:5300" or "[2001:db8::1]:5300".
 	Masters     *string
-	Account     *string
 	Description *string
 }
 
@@ -166,14 +172,15 @@ func (z *ZoneClient) Create(ctx context.Context, opts ZoneCreateOpts) (int, *Res
 
 // Update updates an existing [Zone] and returns the updated state.
 func (z *ZoneClient) Update(ctx context.Context, id int, opts ZoneUpdateOpts) (*Zone, *Response, error) {
-	req := schema.ZoneUpdateRequest{}
+	req := schema.ZoneUpdateRequest{
+		Name:        opts.Name,
+		Master:      opts.Masters,
+		Description: opts.Description,
+	}
 	if opts.Type != nil {
 		t := string(*opts.Type)
 		req.Type = &t
 	}
-	req.Masters = opts.Masters
-	req.Account = opts.Account
-	req.Description = opts.Description
 
 	var result schema.ZoneResponse
 	resp, err := z.client.put(ctx, fmt.Sprintf("zones/%d", id), req, &result)

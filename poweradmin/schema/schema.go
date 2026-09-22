@@ -83,10 +83,13 @@ type ZoneCreateResponse struct {
 	ZoneID int `json:"zone_id"`
 }
 
+// ZoneUpdateRequest is sent via PUT /v2/zones/{id}. The server only reads
+// name, type, master (singular, unlike the "masters" field it returns) and
+// description. The account cannot be changed after creation.
 type ZoneUpdateRequest struct {
+	Name        *string `json:"name,omitempty"`
 	Type        *string `json:"type,omitempty"`
-	Masters     *string `json:"masters,omitempty"`
-	Account     *string `json:"account,omitempty"`
+	Master      *string `json:"master,omitempty"`
 	Description *string `json:"description,omitempty"`
 }
 
