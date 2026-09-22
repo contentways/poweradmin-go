@@ -4,6 +4,7 @@ package poweradmin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
@@ -32,12 +33,26 @@ type Zone struct {
 
 // ZoneCreateOpts configures a zone creation request.
 type ZoneCreateOpts struct {
-	Name        string
-	Type        ZoneType
+	Name string
+	Type ZoneType
+	// Masters is a comma-separated list of master servers for SLAVE zones,
+	// e.g. "192.0.2.1,192.0.2.2:5300" or "[2001:db8::1]:5300".
 	Masters     string
 	Account     string
 	Description string
-	Template    string
+	// TemplateID applies a zone template (see [ZoneTemplateClient]); 0 means
+	// no template.
+	TemplateID   int
+	EnableDNSSEC bool
+	// OwnerUserID assigns a specific user as owner. When nil, the API makes
+	// the authenticated user the owner.
+	OwnerUserID *int
+	// WithoutUserOwner creates a group-only zone with no user owner. It
+	// requires a non-empty GroupIDs and a server zone ownership mode that
+	// allows groups. It cannot be combined with OwnerUserID.
+	WithoutUserOwner bool
+	// GroupIDs assigns groups as zone owners.
+	GroupIDs []int
 }
 
 // ZoneUpdateOpts configures a zone update request.
@@ -154,13 +169,27 @@ func (z *ZoneClient) All(ctx context.Context) ([]*Zone, error) {
 // Create creates a new [Zone] and returns the new ID.
 // Call [ZoneClient.GetByID] to fetch the full object.
 func (z *ZoneClient) Create(ctx context.Context, opts ZoneCreateOpts) (int, *Response, error) {
+	if opts.WithoutUserOwner && opts.OwnerUserID != nil {
+		return 0, nil, errors.New("poweradmin: ZoneCreateOpts: OwnerUserID and WithoutUserOwner are mutually exclusive")
+	}
+	if opts.WithoutUserOwner && len(opts.GroupIDs) == 0 {
+		return 0, nil, errors.New("poweradmin: ZoneCreateOpts: WithoutUserOwner requires GroupIDs")
+	}
 	req := schema.ZoneCreateRequest{
-		Name:        opts.Name,
-		Type:        string(opts.Type),
-		Masters:     opts.Masters,
-		Account:     opts.Account,
-		Description: opts.Description,
-		Template:    opts.Template,
+		Name:         opts.Name,
+		Type:         string(opts.Type),
+		Master:       opts.Masters,
+		Account:      opts.Account,
+		Description:  opts.Description,
+		Template:     opts.TemplateID,
+		EnableDNSSEC: opts.EnableDNSSEC,
+		GroupIDs:     opts.GroupIDs,
+	}
+	switch {
+	case opts.WithoutUserOwner:
+		req.OwnerUserID = schema.OwnerUserIDNull()
+	case opts.OwnerUserID != nil:
+		req.OwnerUserID = schema.OwnerUserIDValue(*opts.OwnerUserID)
 	}
 	var result schema.ZoneCreateResponse
 	resp, err := z.client.post(ctx, "zones", req, &result)

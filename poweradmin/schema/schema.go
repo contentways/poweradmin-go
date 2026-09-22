@@ -18,7 +18,10 @@
 // README.
 package schema
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strconv"
+)
 
 // APIResponse represents the Poweradmin API envelope. Data is RawMessage so
 // callers can unmarshal it into the concrete shape without a marshal roundtrip.
@@ -70,13 +73,30 @@ type ZoneListResponse struct {
 	Zones []Zone `json:"zones"`
 }
 
+// ZoneCreateRequest is sent via POST /v2/zones.
 type ZoneCreateRequest struct {
 	Name        string `json:"name"`
 	Type        string `json:"type"`
-	Masters     string `json:"masters,omitempty"`
+	Master      string `json:"master,omitempty"`
 	Account     string `json:"account,omitempty"`
 	Description string `json:"description,omitempty"`
-	Template    string `json:"template,omitempty"`
+	// Template is a zone template ID; 0 means no template.
+	Template     int  `json:"template,omitempty"`
+	EnableDNSSEC bool `json:"enable_dnssec,omitempty"`
+	// OwnerUserID distinguishes three states the API treats differently:
+	// omitted (owner is the authenticated user), a user ID, and an explicit
+	// JSON null (no user owner, group-only zone). Use OwnerUserIDNull or
+	// OwnerUserIDValue to build it.
+	OwnerUserID json.RawMessage `json:"owner_user_id,omitempty"`
+	GroupIDs    []int           `json:"group_ids,omitempty"`
+}
+
+// OwnerUserIDNull is the explicit JSON null for [ZoneCreateRequest.OwnerUserID].
+func OwnerUserIDNull() json.RawMessage { return json.RawMessage("null") }
+
+// OwnerUserIDValue encodes a user ID for [ZoneCreateRequest.OwnerUserID].
+func OwnerUserIDValue(id int) json.RawMessage {
+	return json.RawMessage(strconv.Itoa(id))
 }
 
 type ZoneCreateResponse struct {
