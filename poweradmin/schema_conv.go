@@ -149,3 +149,39 @@ func ZoneDNSSECFromSchema(s schema.ZoneDNSSECResponse) ZoneDNSSEC {
 		DNSKey:    s.DNSKey,
 	}
 }
+
+func PermissionTemplateFromSchema(s schema.PermissionTemplate) PermissionTemplate {
+	perms := make([]Permission, len(s.Permissions))
+	for i, p := range s.Permissions {
+		perms[i] = PermissionFromSchema(p)
+	}
+	return PermissionTemplate{
+		ID:           s.ID,
+		Name:         s.Name,
+		Descr:        s.Descr,
+		TemplateType: s.TemplateType,
+		Permissions:  perms,
+	}
+}
+
+func ZoneTemplateFromSchema(s schema.ZoneTemplate) ZoneTemplate {
+	return ZoneTemplate{
+		ID:          s.ID,
+		Name:        s.Name,
+		Description: s.Description,
+		Owner:       s.Owner,
+		IsGlobal:    s.IsGlobal,
+		ZonesLinked: s.ZonesLinked,
+	}
+}
+
+func ZoneTemplateRecordFromSchema(s schema.ZoneTemplateRecord) ZoneTemplateRecord {
+	return ZoneTemplateRecord{
+		ID:       s.ID,
+		Name:     s.Name,
+		Type:     s.Type,
+		Content:  s.Content,
+		TTL:      s.TTL,
+		Priority: s.Priority,
+	}
+}

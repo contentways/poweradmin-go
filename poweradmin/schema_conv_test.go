@@ -84,3 +84,26 @@ func TestGroupMemberAndZoneFromSchema(t *testing.T) {
 		t.Errorf("zone = %+v", z)
 	}
 }
+
+func TestTemplateConversions(t *testing.T) {
+	pt := PermissionTemplateFromSchema(schema.PermissionTemplate{
+		ID: 1, Name: "Zone Admin", Descr: "desc", TemplateType: "group",
+		Permissions: []schema.Permission{{ID: 3, Name: "zone_content_view_own", Descr: "view"}},
+	})
+	if pt.ID != 1 || pt.TemplateType != "group" || len(pt.Permissions) != 1 || pt.Permissions[0].Name != "zone_content_view_own" {
+		t.Errorf("permission template = %+v", pt)
+	}
+	if empty := PermissionTemplateFromSchema(schema.PermissionTemplate{}); empty.Permissions == nil || len(empty.Permissions) != 0 {
+		t.Errorf("Permissions = %#v, want empty non-nil slice", empty.Permissions)
+	}
+
+	zt := ZoneTemplateFromSchema(schema.ZoneTemplate{ID: 2, Name: "Default", Description: "d", Owner: 1, IsGlobal: true, ZonesLinked: 5})
+	if zt != (ZoneTemplate{ID: 2, Name: "Default", Description: "d", Owner: 1, IsGlobal: true, ZonesLinked: 5}) {
+		t.Errorf("zone template = %+v", zt)
+	}
+
+	rec := ZoneTemplateRecordFromSchema(schema.ZoneTemplateRecord{ID: 7, Name: "[ZONE]", Type: "MX", Content: "mail.[ZONE]", TTL: 3600, Priority: 10})
+	if rec != (ZoneTemplateRecord{ID: 7, Name: "[ZONE]", Type: "MX", Content: "mail.[ZONE]", TTL: 3600, Priority: 10}) {
+		t.Errorf("zone template record = %+v", rec)
+	}
+}
