@@ -37,7 +37,9 @@ type SlaveStatus struct {
 type ServerStatusOpts struct {
 	// Metrics limits the returned metrics to these names. Empty returns all.
 	Metrics []string
-	// IncludeSlaves additionally probes the autoprimary servers. This is slower.
+	// IncludeSlaves additionally probes the autoprimary servers. This is slower
+	// and requires the supermaster_view permission in addition to
+	// server_status_view; without it the whole request fails with 403.
 	IncludeSlaves bool
 }
 

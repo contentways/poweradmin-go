@@ -201,6 +201,10 @@ if poweradmin.IsServiceUnavailable(err) {
 }
 ```
 
+`IncludeSlaves: true` additionally requires the `supermaster_view` permission,
+because the result lists the autoprimary addresses; without it the request
+fails with 403.
+
 For monitoring, consider a client without `WithRetry`: the call is a GET, so
 a 503 would otherwise be retried before it is reported.
 
