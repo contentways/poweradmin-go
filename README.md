@@ -16,6 +16,10 @@ import "github.com/contentways/poweradmin-go/v4/poweradmin"
 | 1.1.x         | `contentways.dev/contentways/poweradmin-go/...` | 4.3.0+   | ≥ 1.26 |
 | 1.0.x         | `contentways.dev/contentways/poweradmin-go/...` | < 4.3.0  | ≥ 1.26 |
 
+Some features need a newer server; they are marked in
+[Resources](#resources). Calling them against an older Poweradmin returns a
+404 error.
+
 Poweradmin 4.3.0 standardized the v2 API so every endpoint wraps its payload
 under a named key (`data.zones`, `data.records`, `data.rrset`, …). Earlier
 releases returned most collection and single-resource endpoints as bare
@@ -139,12 +143,66 @@ The client exposes the Poweradmin API resources as services on the client:
 | `client.Group`                | `/v2/groups`                      |
 | `client.Permission`           | `/v2/permissions`                 |
 | `client.PermissionTemplate`   | `/v2/permission-templates`        |
+| `client.DNSSEC`               | `/v2/zones/{id}/dnssec/...` (4.5+) |
+| `client.Server`               | `/v2/server/status` (4.5+)        |
 
 Each list endpoint provides:
 
 - `List(ctx, opts)` — one page of results plus the raw `*Response`
 - `All(ctx, ...)` — iterates all pages and returns a single slice
 - `GetByName(ctx, name)` — convenience lookup (linear scan over pages)
+
+## DNSSEC
+
+Signing a zone and reading its DS records is part of `client.Zone`:
+
+```go
+dnssec, _, err := client.Zone.SetDNSSEC(ctx, zoneID, true)
+for _, ds := range dnssec.DSRecords {
+    fmt.Printf("DS %d %d %d %s\n", ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
+}
+```
+
+Managing individual keys and rectifying a zone needs Poweradmin 4.5 or newer
+and lives in `client.DNSSEC`. PowerDNS creates new keys inactive, so activate
+them explicitly:
+
+```go
+key, _, err := client.DNSSEC.AddKey(ctx, zoneID, poweradmin.DNSSECKeyCreateOpts{
+    Type:      poweradmin.DNSSECKeyTypeCSK,
+    Algorithm: "ecdsa256",
+    Bits:      256,
+})
+if err != nil {
+    log.Fatal(err)
+}
+key, _, err = client.DNSSEC.SetKeyActive(ctx, zoneID, key.ID, true)
+
+keys, _, err := client.DNSSEC.ListKeys(ctx, zoneID)
+_, err = client.DNSSEC.Rectify(ctx, zoneID)
+```
+
+The server validates algorithm and key size (e.g. `ecdsa256` needs 256 bits)
+and returns a 400 error with the reason otherwise. Changing keys requires the
+`zone_dnssec_manage_own` permission for the zone.
+
+## Server status
+
+`client.Server.Status` reports the state of the PowerDNS server behind
+Poweradmin (4.5+). It needs the `server_status_view` permission, which
+administrators have implicitly:
+
+```go
+status, _, err := client.Server.Status(ctx, poweradmin.ServerStatusOpts{
+    Metrics: []string{"uptime", "udp-queries"}, // empty returns all metrics
+})
+if poweradmin.IsServiceUnavailable(err) {
+    // Poweradmin is up, but PowerDNS is not reachable (HTTP 503)
+}
+```
+
+For monitoring, consider a client without `WithRetry`: the call is a GET, so
+a 503 would otherwise be retried before it is reported.
 
 ## Pagination
 

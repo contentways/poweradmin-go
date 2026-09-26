@@ -122,12 +122,35 @@ type DSRecord struct {
 
 type ZoneDNSSECResponse struct {
 	Enabled   bool       `json:"enabled"`
+	Presigned bool       `json:"presigned"`
 	DSRecords []DSRecord `json:"ds_records"`
 	DNSKey    *string    `json:"dnskey"`
 }
 
 type ZoneDNSSECSetRequest struct {
 	Enabled bool `json:"enabled"`
+}
+
+// DNSSECKey is a single DNSSEC key of a zone as returned by
+// /zones/{id}/dnssec/keys (Poweradmin 4.5+)
+type DNSSECKey struct {
+	ID          int     `json:"id"`
+	Type        string  `json:"type"`
+	KeyTag      int     `json:"keytag"`
+	Algorithm   *string `json:"algorithm"`
+	AlgorithmID int     `json:"algorithm_id"`
+	Bits        int     `json:"bits"`
+	Active      bool    `json:"active"`
+}
+
+type DNSSECKeyAddRequest struct {
+	Type      string `json:"type"`
+	Algorithm string `json:"algorithm"`
+	Bits      int    `json:"bits"`
+}
+
+type DNSSECKeyUpdateRequest struct {
+	Active bool `json:"active"`
 }
 
 // ── Zone Metadata ────────────────────────────────────────────────────────────
@@ -523,4 +546,22 @@ type ZoneTemplateRecordRequest struct {
 // POST /v2/zone-templates/{id}/records, which reports only the new record ID.
 type ZoneTemplateRecordCreateResponse struct {
 	ID int `json:"id"`
+}
+
+// ServerStatusResponse is returned by /server/status (Poweradmin 4.5+).
+type ServerStatusResponse struct {
+	Running       bool              `json:"running"`
+	ServerID      string            `json:"server_id"`
+	DaemonType    string            `json:"daemon_type"`
+	Version       string            `json:"version"`
+	UptimeSeconds *int              `json:"uptime_seconds"`
+	Metrics       map[string]string `json:"metrics"`
+	Slaves        []SlaveStatus     `json:"slaves"`
+}
+
+type SlaveStatus struct {
+	IP          string  `json:"ip"`
+	Status      string  `json:"status"`
+	LastChecked *string `json:"last_checked"`
+	Error       *string `json:"error"`
 }

@@ -14,14 +14,30 @@
 //	list-records <zone-name>
 //	create-record <zone-name> <record-name> <type> <content> [ttl]
 //	delete-record <zone-name> <record-id>
+//
+// DNSSEC and server status (Poweradmin 4.5+):
+//
+//	dnssec-status <zone-name>
+//	dnssec-enable <zone-name>
+//	dnssec-disable <zone-name>
+//	list-keys <zone-name>
+//	add-key <zone-name> <ksk|zsk|csk> <algorithm> <bits> (e.g. csk ecdsa256 256)
+//	activate-key <zone-name> <key-id>
+//	deactivate-key <zone-name> <key-id>
+//	delete-key <zone-name> <key-id>
+//	rectify <zone-name>
+//	server-status [metric,...]                     (e.g. uptime,udp-queries)
 package main
 
 import (
 	"context"
 	"fmt"
 	"log"
+	"maps"
 	"os"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/contentways/poweradmin-go/v4/poweradmin"
 )
@@ -92,6 +108,33 @@ func main() {
 			log.Fatal("usage: delete-record <zone-name> <record-id>")
 		}
 		deleteRecord(ctx, client, args[0], args[1])
+	case "dnssec-status":
+		requireArgs(args, 1, "dnssec-status <zone-name>")
+		dnssecStatus(ctx, client, args[0])
+	case "dnssec-enable", "dnssec-disable":
+		requireArgs(args, 1, cmd+" <zone-name>")
+		setDNSSEC(ctx, client, args[0], cmd == "dnssec-enable")
+	case "list-keys":
+		requireArgs(args, 1, "list-keys <zone-name>")
+		listKeys(ctx, client, args[0])
+	case "add-key":
+		requireArgs(args, 4, "add-key <zone-name> <ksk|zsk|csk> <algorithm> <bits>")
+		addKey(ctx, client, args[0], poweradmin.DNSSECKeyType(args[1]), args[2], mustInt(args[3], "bits"))
+	case "activate-key", "deactivate-key":
+		requireArgs(args, 2, cmd+" <zone-name> <key-id>")
+		setKeyActive(ctx, client, args[0], mustInt(args[1], "key id"), cmd == "activate-key")
+	case "delete-key":
+		requireArgs(args, 2, "delete-key <zone-name> <key-id>")
+		deleteKey(ctx, client, args[0], mustInt(args[1], "key id"))
+	case "rectify":
+		requireArgs(args, 1, "rectify <zone-name>")
+		rectify(ctx, client, args[0])
+	case "server-status":
+		var metrics []string
+		if len(args) >= 1 {
+			metrics = strings.Split(args[0], ",")
+		}
+		serverStatus(ctx, client, metrics)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", cmd)
 		usage()
@@ -110,6 +153,18 @@ Commands:
   create-record <zone-name> <name> <type> <content> [ttl]
   delete-record <zone-name> <record-id>
 
+DNSSEC and server status (Poweradmin 4.5+):
+  dnssec-status <zone-name>
+  dnssec-enable <zone-name>
+  dnssec-disable <zone-name>
+  list-keys <zone-name>
+  add-key <zone-name> <ksk|zsk|csk> <algorithm> <bits>   (e.g. csk ecdsa256 256)
+  activate-key <zone-name> <key-id>
+  deactivate-key <zone-name> <key-id>
+  delete-key <zone-name> <key-id>
+  rectify <zone-name>
+  server-status [metric,...]                     (e.g. uptime,udp-queries)
+
 Env: POWERADMIN_URL, POWERADMIN_API_KEY  (POWERADMIN_DEBUG=1 for HTTP logs)`)
 }
 
@@ -119,6 +174,28 @@ func mustEnv(name string) string {
 		log.Fatalf("environment variable %s is required", name)
 	}
 	return v
+}
+
+func requireArgs(args []string, n int, usage string) {
+	if len(args) < n {
+		log.Fatalf("usage: %s", usage)
+	}
+}
+
+func mustInt(s, what string) int {
+	v, err := strconv.Atoi(s)
+	if err != nil {
+		log.Fatalf("invalid %s %q: %v", what, s, err)
+	}
+	return v
+}
+
+func mustZoneID(ctx context.Context, c *poweradmin.Client, name string) int {
+	z, _, err := c.Zone.GetByName(ctx, name)
+	if err != nil {
+		log.Fatalf("resolve zone: %v", err)
+	}
+	return z.ID
 }
 
 func listZones(ctx context.Context, c *poweradmin.Client) {
@@ -195,4 +272,113 @@ func deleteRecord(ctx context.Context, c *poweradmin.Client, zoneName string, re
 		log.Fatalf("delete record: %v", err)
 	}
 	fmt.Printf("deleted record %s from zone %s\n", recordID, zoneName)
+}
+
+func printDNSSEC(zoneName string, d *poweradmin.ZoneDNSSEC) {
+	state := "unsigned"
+	if d.Enabled {
+		state = "signed"
+	}
+	if d.Presigned {
+		state += " (presigned, managed at the primary)"
+	}
+	fmt.Printf("%s: %s\n", zoneName, state)
+	for _, ds := range d.DSRecords {
+		fmt.Printf("  DS %d %d %d %s\n", ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
+	}
+}
+
+func dnssecStatus(ctx context.Context, c *poweradmin.Client, zoneName string) {
+	d, _, err := c.Zone.GetDNSSEC(ctx, mustZoneID(ctx, c, zoneName))
+	if err != nil {
+		log.Fatalf("get dnssec: %v", err)
+	}
+	printDNSSEC(zoneName, d)
+}
+
+func setDNSSEC(ctx context.Context, c *poweradmin.Client, zoneName string, enabled bool) {
+	d, _, err := c.Zone.SetDNSSEC(ctx, mustZoneID(ctx, c, zoneName), enabled)
+	if err != nil {
+		log.Fatalf("set dnssec: %v", err)
+	}
+	printDNSSEC(zoneName, d)
+}
+
+func printKey(k *poweradmin.DNSSECKey) {
+	algorithm := k.Algorithm
+	if algorithm == "" {
+		algorithm = fmt.Sprintf("alg-%d", k.AlgorithmID)
+	}
+	active := "inactive"
+	if k.Active {
+		active = "active"
+	}
+	fmt.Printf("  [%3d] %-3s tag=%-5d %-18s %4d bits  %s\n", k.ID, strings.ToUpper(string(k.Type)), k.KeyTag, algorithm, k.Bits, active)
+}
+
+func listKeys(ctx context.Context, c *poweradmin.Client, zoneName string) {
+	keys, _, err := c.DNSSEC.ListKeys(ctx, mustZoneID(ctx, c, zoneName))
+	if err != nil {
+		log.Fatalf("list keys: %v", err)
+	}
+	fmt.Printf("%d key(s) in %s\n", len(keys), zoneName)
+	for _, k := range keys {
+		printKey(k)
+	}
+}
+
+func addKey(ctx context.Context, c *poweradmin.Client, zoneName string, keyType poweradmin.DNSSECKeyType, algorithm string, bits int) {
+	k, _, err := c.DNSSEC.AddKey(ctx, mustZoneID(ctx, c, zoneName), poweradmin.DNSSECKeyCreateOpts{
+		Type:      keyType,
+		Algorithm: algorithm,
+		Bits:      bits,
+	})
+	if err != nil {
+		log.Fatalf("add key: %v", err)
+	}
+	fmt.Printf("added key to %s (PowerDNS creates keys inactive; use activate-key):\n", zoneName)
+	printKey(k)
+}
+
+func setKeyActive(ctx context.Context, c *poweradmin.Client, zoneName string, keyID int, active bool) {
+	k, _, err := c.DNSSEC.SetKeyActive(ctx, mustZoneID(ctx, c, zoneName), keyID, active)
+	if err != nil {
+		log.Fatalf("update key: %v", err)
+	}
+	printKey(k)
+}
+
+func deleteKey(ctx context.Context, c *poweradmin.Client, zoneName string, keyID int) {
+	if _, err := c.DNSSEC.DeleteKey(ctx, mustZoneID(ctx, c, zoneName), keyID); err != nil {
+		log.Fatalf("delete key: %v", err)
+	}
+	fmt.Printf("deleted key %d from zone %s\n", keyID, zoneName)
+}
+
+func rectify(ctx context.Context, c *poweradmin.Client, zoneName string) {
+	if _, err := c.DNSSEC.Rectify(ctx, mustZoneID(ctx, c, zoneName)); err != nil {
+		log.Fatalf("rectify: %v", err)
+	}
+	fmt.Printf("rectified zone %s\n", zoneName)
+}
+
+func serverStatus(ctx context.Context, c *poweradmin.Client, metrics []string) {
+	s, _, err := c.Server.Status(ctx, poweradmin.ServerStatusOpts{Metrics: metrics})
+	if poweradmin.IsServiceUnavailable(err) {
+		fmt.Println("PowerDNS is not reachable")
+		os.Exit(1)
+	}
+	if err != nil {
+		log.Fatalf("server status: %v", err)
+	}
+
+	uptime := "unknown"
+	if s.UptimeSeconds != nil {
+		uptime = fmt.Sprintf("%ds", *s.UptimeSeconds)
+	}
+	fmt.Printf("PowerDNS %s %s (server %s), uptime %s\n", s.DaemonType, s.Version, s.ServerID, uptime)
+
+	for _, name := range slices.Sorted(maps.Keys(s.Metrics)) {
+		fmt.Printf("  %-30s %s\n", name, s.Metrics[name])
+	}
 }

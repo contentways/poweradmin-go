@@ -145,6 +145,7 @@ func ZoneDNSSECFromSchema(s schema.ZoneDNSSECResponse) ZoneDNSSEC {
 	}
 	return ZoneDNSSEC{
 		Enabled:   s.Enabled,
+		Presigned: s.Presigned,
 		DSRecords: records,
 		DNSKey:    s.DNSKey,
 	}
@@ -183,5 +184,43 @@ func ZoneTemplateRecordFromSchema(s schema.ZoneTemplateRecord) ZoneTemplateRecor
 		Content:  s.Content,
 		TTL:      s.TTL,
 		Priority: s.Priority,
+	}
+}
+
+// DNSSECKeyFromSchema converts a [schema.DNSSECKey] to a [DNSSECKey].
+func DNSSECKeyFromSchema(s schema.DNSSECKey) DNSSECKey {
+	key := DNSSECKey{
+		ID:          s.ID,
+		Type:        DNSSECKeyType(s.Type),
+		KeyTag:      s.KeyTag,
+		AlgorithmID: s.AlgorithmID,
+		Bits:        s.Bits,
+		Active:      s.Active,
+	}
+	if s.Algorithm != nil {
+		key.Algorithm = *s.Algorithm
+	}
+	return key
+}
+
+// ServerStatusFromSchema converts a [schema.ServerStatusResponse] to a [ServerStatus].
+func ServerStatusFromSchema(s schema.ServerStatusResponse) ServerStatus {
+	slaves := make([]SlaveStatus, len(s.Slaves))
+	for i, sl := range s.Slaves {
+		slaves[i] = SlaveStatus{
+			IP:          sl.IP,
+			Status:      sl.Status,
+			LastChecked: sl.LastChecked,
+			Error:       sl.Error,
+		}
+	}
+	return ServerStatus{
+		Running:       s.Running,
+		ServerID:      s.ServerID,
+		DaemonType:    s.DaemonType,
+		Version:       s.Version,
+		UptimeSeconds: s.UptimeSeconds,
+		Metrics:       s.Metrics,
+		Slaves:        slaves,
 	}
 }
