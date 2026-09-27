@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -19,6 +20,8 @@ func dnssecKeyJSON(id int, active bool) map[string]any {
 		"algorithm_id": 13,
 		"bits":         256,
 		"active":       active,
+		"dnskey":       "257 3 13 mdsswUyr3DPW132mOi8V9xESWE8jTo0dxCjjnopKl+GqJxpVXckHAeF+KkxLbxILfDLUT0rAK9iUzy1L53eKGQ==",
+		"ds":           []string{"46395 13 2 3dd8ee7d9ab0c6d8e4b2fd8a7e1cb3a2b7b0d4e5f6a7b8c9d0e1f2a3b4c5d6e7"},
 	}
 }
 
@@ -30,6 +33,8 @@ func TestDNSSECListKeys(t *testing.T) {
 		unknownAlgorithm := dnssecKeyJSON(2, false)
 		unknownAlgorithm["algorithm"] = nil
 		unknownAlgorithm["algorithm_id"] = 253
+		unknownAlgorithm["dnskey"] = nil
+		unknownAlgorithm["ds"] = []string{}
 		writeEnvelope(t, w, http.StatusOK, []map[string]any{dnssecKeyJSON(1, true), unknownAlgorithm})
 	})
 
@@ -40,12 +45,22 @@ func TestDNSSECListKeys(t *testing.T) {
 	if len(keys) != 2 {
 		t.Fatalf("len(keys) = %d, want 2", len(keys))
 	}
-	want := DNSSECKey{ID: 1, Type: DNSSECKeyTypeCSK, KeyTag: 46395, Algorithm: "ecdsa256", AlgorithmID: 13, Bits: 256, Active: true}
-	if *keys[0] != want {
-		t.Errorf("keys[0] = %+v, want %+v", *keys[0], want)
+	k := keys[0]
+	if k.ID != 1 || k.Type != DNSSECKeyTypeCSK || k.KeyTag != 46395 || k.Algorithm != "ecdsa256" ||
+		k.AlgorithmID != 13 || k.Bits != 256 || !k.Active {
+		t.Errorf("keys[0] = %+v", *k)
+	}
+	if k.DNSKey == nil || !strings.HasPrefix(*k.DNSKey, "257 3 13 ") {
+		t.Errorf("keys[0].DNSKey = %v, want 257 3 13 …", k.DNSKey)
+	}
+	if len(k.DS) != 1 || !strings.HasPrefix(k.DS[0], "46395 13 2 ") {
+		t.Errorf("keys[0].DS = %v", k.DS)
 	}
 	if keys[1].Algorithm != "" || keys[1].AlgorithmID != 253 {
 		t.Errorf("unknown algorithm = %q/%d, want \"\"/253", keys[1].Algorithm, keys[1].AlgorithmID)
+	}
+	if keys[1].DNSKey != nil || keys[1].DS == nil || len(keys[1].DS) != 0 {
+		t.Errorf("keys[1] DNSKey/DS = %v/%v, want nil/[]", keys[1].DNSKey, keys[1].DS)
 	}
 }
 
@@ -57,16 +72,17 @@ func TestDNSSECAddKey(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		var req map[string]any
 		_ = json.Unmarshal(body, &req)
-		if req["type"] != "csk" || req["algorithm"] != "ecdsa256" || req["bits"] != float64(256) {
+		if req["type"] != "csk" || req["algorithm"] != "ecdsa256" || req["bits"] != float64(256) || req["active"] != true {
 			t.Errorf("body = %s", body)
 		}
-		writeEnvelope(t, w, http.StatusCreated, dnssecKeyJSON(3, false))
+		writeEnvelope(t, w, http.StatusCreated, dnssecKeyJSON(3, true))
 	})
 
 	key, resp, err := client.DNSSEC.AddKey(context.Background(), 7, DNSSECKeyCreateOpts{
 		Type:      DNSSECKeyTypeCSK,
 		Algorithm: "ecdsa256",
 		Bits:      256,
+		Active:    true,
 	})
 	if err != nil {
 		t.Fatalf("AddKey: %v", err)
@@ -74,8 +90,24 @@ func TestDNSSECAddKey(t *testing.T) {
 	if resp.StatusCode != http.StatusCreated {
 		t.Errorf("status = %d, want 201", resp.StatusCode)
 	}
-	if key.ID != 3 || key.Active {
-		t.Errorf("key = %+v, want ID 3, inactive", *key)
+	if key.ID != 3 || !key.Active || len(key.DS) != 1 {
+		t.Errorf("key = %+v, want ID 3, active, with DS", *key)
+	}
+}
+
+func TestDNSSECAddKeyOmitsActiveByDefault(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if strings.Contains(string(body), "active") {
+			t.Errorf("body = %s, want no active field", body)
+		}
+		writeEnvelope(t, w, http.StatusCreated, dnssecKeyJSON(4, false))
+	})
+
+	if _, _, err := client.DNSSEC.AddKey(context.Background(), 7, DNSSECKeyCreateOpts{
+		Type: DNSSECKeyTypeZSK, Algorithm: "ecdsa256", Bits: 256,
+	}); err != nil {
+		t.Fatalf("AddKey: %v", err)
 	}
 }
 

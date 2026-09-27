@@ -196,6 +196,11 @@ func DNSSECKeyFromSchema(s schema.DNSSECKey) DNSSECKey {
 		AlgorithmID: s.AlgorithmID,
 		Bits:        s.Bits,
 		Active:      s.Active,
+		DNSKey:      s.DNSKey,
+		DS:          s.DS,
+	}
+	if key.DS == nil {
+		key.DS = []string{}
 	}
 	if s.Algorithm != nil {
 		key.Algorithm = *s.Algorithm

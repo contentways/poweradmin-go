@@ -134,19 +134,22 @@ type ZoneDNSSECSetRequest struct {
 // DNSSECKey is a single DNSSEC key of a zone as returned by
 // /zones/{id}/dnssec/keys (Poweradmin 4.5+)
 type DNSSECKey struct {
-	ID          int     `json:"id"`
-	Type        string  `json:"type"`
-	KeyTag      int     `json:"keytag"`
-	Algorithm   *string `json:"algorithm"`
-	AlgorithmID int     `json:"algorithm_id"`
-	Bits        int     `json:"bits"`
-	Active      bool    `json:"active"`
+	ID          int      `json:"id"`
+	Type        string   `json:"type"`
+	KeyTag      int      `json:"keytag"`
+	Algorithm   *string  `json:"algorithm"`
+	AlgorithmID int      `json:"algorithm_id"`
+	Bits        int      `json:"bits"`
+	Active      bool     `json:"active"`
+	DNSKey      *string  `json:"dnskey"`
+	DS          []string `json:"ds"`
 }
 
 type DNSSECKeyAddRequest struct {
 	Type      string `json:"type"`
 	Algorithm string `json:"algorithm"`
 	Bits      int    `json:"bits"`
+	Active    bool   `json:"active,omitempty"`
 }
 
 type DNSSECKeyUpdateRequest struct {

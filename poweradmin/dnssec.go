@@ -32,6 +32,12 @@ type DNSSECKey struct {
 	AlgorithmID int
 	Bits        int
 	Active      bool
+	// DNSKey is the key's DNSKEY record data (flags protocol algorithm key),
+	// e.g. "257 3 13 mdsswUyr…". Nil when PowerDNS does not report it.
+	DNSKey *string
+	// DS holds the DS record data ("keytag algorithm digesttype digest") to
+	// publish in the parent zone. Empty for a ZSK.
+	DS []string
 }
 
 // DNSSECKeyCreateOpts describes a new DNSSEC key.
@@ -42,13 +48,17 @@ type DNSSECKeyCreateOpts struct {
 	Type      DNSSECKeyType
 	Algorithm string
 	Bits      int
+	// Active creates the key active. Defaults to false, as in the web UI and
+	// PowerDNS itself.
+	Active bool
 }
 
 // DNSSECClient manages DNSSEC keys and rectification of zones.
 //
 // Enabling or disabling DNSSEC for a zone is done with [ZoneClient.SetDNSSEC].
 // All methods here require Poweradmin 4.5 or later with the PowerDNS API
-// configured; older servers answer 404, a server without the PowerDNS API 501.
+// configured; older servers answer 404, a server without the PowerDNS API 501,
+// and 502 means Poweradmin could not reach PowerDNS.
 type DNSSECClient struct {
 	client *Client
 }
@@ -79,15 +89,16 @@ func (d *DNSSECClient) GetKey(ctx context.Context, zoneID, keyID int) (*DNSSECKe
 	return &key, resp, nil
 }
 
-// AddKey creates a new DNSSEC key for the zone and returns it.
+// AddKey creates a new DNSSEC key for the zone and returns it, including its
+// DNSKEY and DS records.
 //
-// PowerDNS creates keys inactive; use [DNSSECClient.SetKeyActive] to activate
-// the new key.
+// Keys are created inactive unless [DNSSECKeyCreateOpts.Active] is set.
 func (d *DNSSECClient) AddKey(ctx context.Context, zoneID int, opts DNSSECKeyCreateOpts) (*DNSSECKey, *Response, error) {
 	req := schema.DNSSECKeyAddRequest{
 		Type:      string(opts.Type),
 		Algorithm: opts.Algorithm,
 		Bits:      opts.Bits,
+		Active:    opts.Active,
 	}
 	var result schema.DNSSECKey
 	resp, err := d.client.post(ctx, fmt.Sprintf("zones/%d/dnssec/keys", zoneID), req, &result)

@@ -164,19 +164,22 @@ for _, ds := range dnssec.DSRecords {
 ```
 
 Managing individual keys and rectifying a zone needs Poweradmin 4.5 or newer
-and lives in `client.DNSSEC`. PowerDNS creates new keys inactive, so activate
-them explicitly:
+and lives in `client.DNSSEC`. New keys are inactive unless `Active` is set;
+every key carries its DNSKEY and DS records:
 
 ```go
 key, _, err := client.DNSSEC.AddKey(ctx, zoneID, poweradmin.DNSSECKeyCreateOpts{
     Type:      poweradmin.DNSSECKeyTypeCSK,
     Algorithm: "ecdsa256",
     Bits:      256,
+    Active:    true,
 })
 if err != nil {
     log.Fatal(err)
 }
-key, _, err = client.DNSSEC.SetKeyActive(ctx, zoneID, key.ID, true)
+fmt.Println(key.DS) // publish these at the parent zone / registrar
+
+key, _, err = client.DNSSEC.SetKeyActive(ctx, zoneID, key.ID, false)
 
 keys, _, err := client.DNSSEC.ListKeys(ctx, zoneID)
 _, err = client.DNSSEC.Rectify(ctx, zoneID)
@@ -184,7 +187,8 @@ _, err = client.DNSSEC.Rectify(ctx, zoneID)
 
 The server validates algorithm and key size (e.g. `ecdsa256` needs 256 bits)
 and returns a 400 error with the reason otherwise. Changing keys requires the
-`zone_dnssec_manage_own` permission for the zone.
+`zone_dnssec_manage_own` permission for the zone. If Poweradmin cannot reach
+PowerDNS, the key endpoints answer 502.
 
 ## Server status
 

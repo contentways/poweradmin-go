@@ -21,7 +21,7 @@
 //	dnssec-enable <zone-name>
 //	dnssec-disable <zone-name>
 //	list-keys <zone-name>
-//	add-key <zone-name> <ksk|zsk|csk> <algorithm> <bits> (e.g. csk ecdsa256 256)
+//	add-key <zone-name> <ksk|zsk|csk> <algorithm> <bits> [active] (e.g. csk ecdsa256 256 active)
 //	activate-key <zone-name> <key-id>
 //	deactivate-key <zone-name> <key-id>
 //	delete-key <zone-name> <key-id>
@@ -118,8 +118,9 @@ func main() {
 		requireArgs(args, 1, "list-keys <zone-name>")
 		listKeys(ctx, client, args[0])
 	case "add-key":
-		requireArgs(args, 4, "add-key <zone-name> <ksk|zsk|csk> <algorithm> <bits>")
-		addKey(ctx, client, args[0], poweradmin.DNSSECKeyType(args[1]), args[2], mustInt(args[3], "bits"))
+		requireArgs(args, 4, "add-key <zone-name> <ksk|zsk|csk> <algorithm> <bits> [active]")
+		active := len(args) >= 5 && args[4] == "active"
+		addKey(ctx, client, args[0], poweradmin.DNSSECKeyType(args[1]), args[2], mustInt(args[3], "bits"), active)
 	case "activate-key", "deactivate-key":
 		requireArgs(args, 2, cmd+" <zone-name> <key-id>")
 		setKeyActive(ctx, client, args[0], mustInt(args[1], "key id"), cmd == "activate-key")
@@ -158,7 +159,7 @@ DNSSEC and server status (Poweradmin 4.5+):
   dnssec-enable <zone-name>
   dnssec-disable <zone-name>
   list-keys <zone-name>
-  add-key <zone-name> <ksk|zsk|csk> <algorithm> <bits>   (e.g. csk ecdsa256 256)
+  add-key <zone-name> <ksk|zsk|csk> <algorithm> <bits> [active]  (e.g. csk ecdsa256 256 active)
   activate-key <zone-name> <key-id>
   deactivate-key <zone-name> <key-id>
   delete-key <zone-name> <key-id>
@@ -314,6 +315,9 @@ func printKey(k *poweradmin.DNSSECKey) {
 		active = "active"
 	}
 	fmt.Printf("  [%3d] %-3s tag=%-5d %-18s %4d bits  %s\n", k.ID, strings.ToUpper(string(k.Type)), k.KeyTag, algorithm, k.Bits, active)
+	for _, ds := range k.DS {
+		fmt.Printf("        DS %s\n", ds)
+	}
 }
 
 func listKeys(ctx context.Context, c *poweradmin.Client, zoneName string) {
@@ -327,16 +331,17 @@ func listKeys(ctx context.Context, c *poweradmin.Client, zoneName string) {
 	}
 }
 
-func addKey(ctx context.Context, c *poweradmin.Client, zoneName string, keyType poweradmin.DNSSECKeyType, algorithm string, bits int) {
+func addKey(ctx context.Context, c *poweradmin.Client, zoneName string, keyType poweradmin.DNSSECKeyType, algorithm string, bits int, active bool) {
 	k, _, err := c.DNSSEC.AddKey(ctx, mustZoneID(ctx, c, zoneName), poweradmin.DNSSECKeyCreateOpts{
 		Type:      keyType,
 		Algorithm: algorithm,
 		Bits:      bits,
+		Active:    active,
 	})
 	if err != nil {
 		log.Fatalf("add key: %v", err)
 	}
-	fmt.Printf("added key to %s (PowerDNS creates keys inactive; use activate-key):\n", zoneName)
+	fmt.Printf("added key to %s:\n", zoneName)
 	printKey(k)
 }
 

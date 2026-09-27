@@ -12,10 +12,10 @@ type IDNSSECClient interface {
 	ListKeys(ctx context.Context, zoneID int) ([]*DNSSECKey, *Response, error)
 	// GetKey returns a single DNSSEC key of the zone.
 	GetKey(ctx context.Context, zoneID, keyID int) (*DNSSECKey, *Response, error)
-	// AddKey creates a new DNSSEC key for the zone and returns it.
+	// AddKey creates a new DNSSEC key for the zone and returns it, including its
+	// DNSKEY and DS records.
 	//
-	// PowerDNS creates keys inactive; use [DNSSECClient.SetKeyActive] to activate
-	// the new key.
+	// Keys are created inactive unless [DNSSECKeyCreateOpts.Active] is set.
 	AddKey(ctx context.Context, zoneID int, opts DNSSECKeyCreateOpts) (*DNSSECKey, *Response, error)
 	// SetKeyActive activates or deactivates a DNSSEC key and returns its new state.
 	// Setting the state the key already has is not an error.
