@@ -77,7 +77,10 @@ type ZoneUpdateOpts struct {
 
 // ZoneDNSSEC represents the DNSSEC status of a zone.
 type ZoneDNSSEC struct {
-	Enabled   bool
+	Enabled bool
+	// Presigned reports that the zone's DNSSEC is managed at its primary server,
+	// so keys cannot be changed here. Always false before Poweradmin 4.5.
+	Presigned bool
 	DSRecords []DSRecord
 	DNSKey    *string
 }
