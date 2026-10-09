@@ -2,11 +2,19 @@
 .idea/
 .vscode/
 *.swp
+*.swo
 .claude
+
+# OS
+.DS_Store
+Thumbs.db
+
 # Go
 *.test
 *.out
 coverage.txt
+go.work
+go.work.sum
 
 # Local OpenAPI reference
 /json
