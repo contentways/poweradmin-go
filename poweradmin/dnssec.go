@@ -48,8 +48,7 @@ type DNSSECKeyCreateOpts struct {
 	Type      DNSSECKeyType
 	Algorithm string
 	Bits      int
-	// Active creates the key active. Defaults to false, as in the web UI and
-	// PowerDNS itself.
+	// Active creates the key active. Defaults to false, as in the web UI.
 	Active bool
 }
 
@@ -58,7 +57,11 @@ type DNSSECKeyCreateOpts struct {
 // Enabling or disabling DNSSEC for a zone is done with [ZoneClient.SetDNSSEC].
 // All methods here require Poweradmin 4.5 or later with the PowerDNS API
 // configured; older servers answer 404, a server without the PowerDNS API 501,
-// and 502 means Poweradmin could not reach PowerDNS.
+// and 502 means Poweradmin could not reach PowerDNS. AddKey can also answer
+// 500 if PowerDNS becomes unreachable between the key check and the write.
+//
+// Changing keys requires the zone_dnssec_manage_own permission and ownership
+// of the zone; administrators need neither.
 type DNSSECClient struct {
 	client *Client
 }
@@ -128,7 +131,7 @@ func (d *DNSSECClient) DeleteKey(ctx context.Context, zoneID, keyID int) (*Respo
 }
 
 // Rectify recalculates the DNSSEC ordering and auth fields of a signed zone.
-// The server answers 409 for unsigned, presigned and secondary zones.
+// The server answers 409 for unsigned, presigned, secondary and consumer zones.
 func (d *DNSSECClient) Rectify(ctx context.Context, zoneID int) (*Response, error) {
 	return d.client.post(ctx, fmt.Sprintf("zones/%d/dnssec/rectify", zoneID), nil, nil)
 }

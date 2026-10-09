@@ -11,8 +11,10 @@ type IServerClient interface {
 	// Status returns the status of the PowerDNS server.
 	//
 	// Requires Poweradmin 4.5 or later and the server_status_view permission
-	// (administrators have it implicitly). When PowerDNS is unreachable the server
-	// answers 503 and Status returns an error for which [IsServiceUnavailable]
-	// reports true; a server without the PowerDNS API configured answers 501.
+	// (administrators have it implicitly). The status covers the whole server, so
+	// an API key restricted to particular zones always gets 403. When PowerDNS is
+	// unreachable the server answers 503 and Status returns an error for which
+	// [IsServiceUnavailable] reports true; a server without the PowerDNS API
+	// configured answers 501.
 	Status(ctx context.Context, opts ServerStatusOpts) (*ServerStatus, *Response, error)
 }

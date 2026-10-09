@@ -23,6 +23,6 @@ type IDNSSECClient interface {
 	// DeleteKey deletes a DNSSEC key of the zone.
 	DeleteKey(ctx context.Context, zoneID, keyID int) (*Response, error)
 	// Rectify recalculates the DNSSEC ordering and auth fields of a signed zone.
-	// The server answers 409 for unsigned, presigned and secondary zones.
+	// The server answers 409 for unsigned, presigned, secondary and consumer zones.
 	Rectify(ctx context.Context, zoneID int) (*Response, error)
 }

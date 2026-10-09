@@ -41,7 +41,8 @@ Breaking changes:
 - `ZoneUpdateOpts.Account` was removed: the API cannot change the account
   after creation, so the field never had an effect.
 - `Zone.SOASerial` and `Zone.DNSSECSigned` were removed because no Poweradmin
-  release returns them; use `ZoneClient.GetDNSSEC` for the DNSSEC status.
+  release returns them; use `ZoneClient.GetDNSSEC` (Poweradmin 4.5+) for the
+  DNSSEC status.
 - `Record.ZoneID` is an `int` instead of `int64`.
 
 Fixes and additions that change behaviour:
@@ -154,7 +155,9 @@ Each list endpoint provides:
 
 ## DNSSEC
 
-Signing a zone and reading its DS records is part of `client.Zone`:
+All DNSSEC endpoints, including `/zones/{id}/dnssec`, are new in Poweradmin
+4.5; on 4.4.x every call below answers 404. Signing a zone and reading its DS
+records is part of `client.Zone`:
 
 ```go
 dnssec, _, err := client.Zone.SetDNSSEC(ctx, zoneID, true)
@@ -163,8 +166,7 @@ for _, ds := range dnssec.DSRecords {
 }
 ```
 
-Managing individual keys and rectifying a zone needs Poweradmin 4.5 or newer
-and lives in `client.DNSSEC`. New keys are inactive unless `Active` is set;
+Managing individual keys and rectifying a zone lives in `client.DNSSEC`. New keys are inactive unless `Active` is set;
 every key carries its DNSKEY and DS records:
 
 ```go
@@ -187,14 +189,18 @@ _, err = client.DNSSEC.Rectify(ctx, zoneID)
 
 The server validates algorithm and key size (e.g. `ecdsa256` needs 256 bits)
 and returns a 400 error with the reason otherwise. Changing keys requires the
-`zone_dnssec_manage_own` permission for the zone. If Poweradmin cannot reach
-PowerDNS, the key endpoints answer 502.
+`zone_dnssec_manage_own` permission and ownership of the zone; administrators
+need neither. If Poweradmin cannot reach PowerDNS, the key endpoints answer
+502; `AddKey` can also answer 500 if PowerDNS becomes unreachable between the
+key check and the write. `Rectify` answers 409 for unsigned, presigned,
+secondary and consumer zones.
 
 ## Server status
 
 `client.Server.Status` reports the state of the PowerDNS server behind
 Poweradmin (4.5+). It needs the `server_status_view` permission, which
-administrators have implicitly:
+administrators have implicitly. The status covers the whole server, so an API
+key restricted to particular zones always gets 403:
 
 ```go
 status, _, err := client.Server.Status(ctx, poweradmin.ServerStatusOpts{
@@ -204,6 +210,9 @@ if poweradmin.IsServiceUnavailable(err) {
     // Poweradmin is up, but PowerDNS is not reachable (HTTP 503)
 }
 ```
+
+`status.Running` is always true when `err` is nil; a stopped or unreachable
+PowerDNS only shows up as the 503 error.
 
 `IncludeSlaves: true` additionally requires the `supermaster_view` permission,
 because the result lists the autoprimary addresses; without it the request
