@@ -39,8 +39,10 @@ type IZoneClient interface {
 	// RemoveOwner removes a user from the zone's owners.
 	RemoveOwner(ctx context.Context, zoneID, userID int) (*Response, error)
 	// GetDNSSEC returns the DNSSEC status of the zone with the given ID.
+	// Requires Poweradmin 4.5 or later.
 	GetDNSSEC(ctx context.Context, id int) (*ZoneDNSSEC, *Response, error)
 	// SetDNSSEC enables or disables DNSSEC for the zone with the given ID.
+	// Requires Poweradmin 4.5 or later.
 	SetDNSSEC(ctx context.Context, id int, enabled bool) (*ZoneDNSSEC, *Response, error)
 	// ListMetadata returns all metadata entries for the zone with the given ID.
 	ListMetadata(ctx context.Context, zoneID int) ([]*ZoneMetadata, *Response, error)

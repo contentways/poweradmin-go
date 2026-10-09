@@ -16,6 +16,10 @@ import "github.com/contentways/poweradmin-go/v4/poweradmin"
 | 1.1.x         | `contentways.dev/contentways/poweradmin-go/...` | 4.3.0+   | ≥ 1.26 |
 | 1.0.x         | `contentways.dev/contentways/poweradmin-go/...` | < 4.3.0  | ≥ 1.26 |
 
+Some features need a newer server; they are marked in
+[Resources](#resources). Calling them against an older Poweradmin returns a
+404 error.
+
 Poweradmin 4.3.0 standardized the v2 API so every endpoint wraps its payload
 under a named key (`data.zones`, `data.records`, `data.rrset`, …). Earlier
 releases returned most collection and single-resource endpoints as bare
@@ -37,7 +41,8 @@ Breaking changes:
 - `ZoneUpdateOpts.Account` was removed: the API cannot change the account
   after creation, so the field never had an effect.
 - `Zone.SOASerial` and `Zone.DNSSECSigned` were removed because no Poweradmin
-  release returns them; use `ZoneClient.GetDNSSEC` for the DNSSEC status.
+  release returns them; use `ZoneClient.GetDNSSEC` (Poweradmin 4.5+) for the
+  DNSSEC status.
 - `Record.ZoneID` is an `int` instead of `int64`.
 
 Fixes and additions that change behaviour:
@@ -139,12 +144,82 @@ The client exposes the Poweradmin API resources as services on the client:
 | `client.Group`                | `/v2/groups`                      |
 | `client.Permission`           | `/v2/permissions`                 |
 | `client.PermissionTemplate`   | `/v2/permission-templates`        |
+| `client.DNSSEC`               | `/v2/zones/{id}/dnssec/...` (4.5+) |
+| `client.Server`               | `/v2/server/status` (4.5+)        |
 
 Each list endpoint provides:
 
 - `List(ctx, opts)` — one page of results plus the raw `*Response`
 - `All(ctx, ...)` — iterates all pages and returns a single slice
 - `GetByName(ctx, name)` — convenience lookup (linear scan over pages)
+
+## DNSSEC
+
+All DNSSEC endpoints, including `/zones/{id}/dnssec`, are new in Poweradmin
+4.5; on 4.4.x every call below answers 404. Signing a zone and reading its DS
+records is part of `client.Zone`:
+
+```go
+dnssec, _, err := client.Zone.SetDNSSEC(ctx, zoneID, true)
+for _, ds := range dnssec.DSRecords {
+    fmt.Printf("DS %d %d %d %s\n", ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
+}
+```
+
+Managing individual keys and rectifying a zone lives in `client.DNSSEC`. New keys are inactive unless `Active` is set;
+every key carries its DNSKEY and DS records:
+
+```go
+key, _, err := client.DNSSEC.AddKey(ctx, zoneID, poweradmin.DNSSECKeyCreateOpts{
+    Type:      poweradmin.DNSSECKeyTypeCSK,
+    Algorithm: "ecdsa256",
+    Bits:      256,
+    Active:    true,
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(key.DS) // publish these at the parent zone / registrar
+
+key, _, err = client.DNSSEC.SetKeyActive(ctx, zoneID, key.ID, false)
+
+keys, _, err := client.DNSSEC.ListKeys(ctx, zoneID)
+_, err = client.DNSSEC.Rectify(ctx, zoneID)
+```
+
+The server validates algorithm and key size (e.g. `ecdsa256` needs 256 bits)
+and returns a 400 error with the reason otherwise. Changing keys requires the
+`zone_dnssec_manage_own` permission and ownership of the zone; administrators
+need neither. If Poweradmin cannot reach PowerDNS, the key endpoints answer
+502; `AddKey` can also answer 500 if PowerDNS becomes unreachable between the
+key check and the write. `Rectify` answers 409 for unsigned, presigned,
+secondary and consumer zones.
+
+## Server status
+
+`client.Server.Status` reports the state of the PowerDNS server behind
+Poweradmin (4.5+). It needs the `server_status_view` permission, which
+administrators have implicitly. The status covers the whole server, so an API
+key restricted to particular zones always gets 403:
+
+```go
+status, _, err := client.Server.Status(ctx, poweradmin.ServerStatusOpts{
+    Metrics: []string{"uptime", "udp-queries"}, // empty returns all metrics
+})
+if poweradmin.IsServiceUnavailable(err) {
+    // Poweradmin is up, but PowerDNS is not reachable (HTTP 503)
+}
+```
+
+`status.Running` is always true when `err` is nil; a stopped or unreachable
+PowerDNS only shows up as the 503 error.
+
+`IncludeSlaves: true` additionally requires the `supermaster_view` permission,
+because the result lists the autoprimary addresses; without it the request
+fails with 403.
+
+For monitoring, consider a client without `WithRetry`: the call is a GET, so
+a 503 would otherwise be retried before it is reported.
 
 ## Pagination
 

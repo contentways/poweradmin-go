@@ -77,7 +77,10 @@ type ZoneUpdateOpts struct {
 
 // ZoneDNSSEC represents the DNSSEC status of a zone.
 type ZoneDNSSEC struct {
-	Enabled   bool
+	Enabled bool
+	// Presigned reports that the zone's DNSSEC is managed at its primary server,
+	// so keys cannot be changed here.
+	Presigned bool
 	DSRecords []DSRecord
 	DNSKey    *string
 }
@@ -279,8 +282,12 @@ func (z *ZoneClient) RemoveOwner(ctx context.Context, zoneID, userID int) (*Resp
 }
 
 // ── DNSSEC ───────────────────────────────────────────────────────────────────
+//
+// The /zones/{id}/dnssec endpoints were added in Poweradmin 4.5; older servers
+// answer 404 for GetDNSSEC and SetDNSSEC.
 
 // GetDNSSEC returns the DNSSEC status of the zone with the given ID.
+// Requires Poweradmin 4.5 or later.
 func (z *ZoneClient) GetDNSSEC(ctx context.Context, id int) (*ZoneDNSSEC, *Response, error) {
 	var result schema.ZoneDNSSECResponse
 	resp, err := z.client.get(ctx, fmt.Sprintf("zones/%d/dnssec", id), &result)
@@ -292,6 +299,7 @@ func (z *ZoneClient) GetDNSSEC(ctx context.Context, id int) (*ZoneDNSSEC, *Respo
 }
 
 // SetDNSSEC enables or disables DNSSEC for the zone with the given ID.
+// Requires Poweradmin 4.5 or later.
 func (z *ZoneClient) SetDNSSEC(ctx context.Context, id int, enabled bool) (*ZoneDNSSEC, *Response, error) {
 	req := schema.ZoneDNSSECSetRequest{Enabled: enabled}
 	var result schema.ZoneDNSSECResponse
