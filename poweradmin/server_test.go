@@ -68,11 +68,36 @@ func TestServerStatusNoOptsSendsNoQuery(t *testing.T) {
 
 func TestServerStatusUnavailable(t *testing.T) {
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		writeError(t, w, http.StatusServiceUnavailable, "PowerDNS server is not reachable")
+		writeErrorWithData(t, w, http.StatusServiceUnavailable, "PowerDNS server is not reachable",
+			map[string]any{"running": false})
 	})
 
 	_, _, err := client.Server.Status(context.Background(), ServerStatusOpts{})
 	if !IsServiceUnavailable(err) {
 		t.Fatalf("err = %v, want service unavailable", err)
+	}
+}
+
+func TestServerStatusUptimeNull(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeEnvelope(t, w, http.StatusOK, map[string]any{
+			"running":        true,
+			"server_id":      "localhost",
+			"daemon_type":    "authoritative",
+			"version":        "4.9.17",
+			"uptime_seconds": nil,
+			"metrics":        map[string]string{},
+		})
+	})
+
+	status, _, err := client.Server.Status(context.Background(), ServerStatusOpts{})
+	if err != nil {
+		t.Fatalf("Status: %v", err)
+	}
+	if status.UptimeSeconds != nil {
+		t.Errorf("uptime = %d, want nil", *status.UptimeSeconds)
+	}
+	if !status.Running {
+		t.Errorf("running = false, want true")
 	}
 }

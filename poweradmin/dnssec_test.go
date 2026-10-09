@@ -159,6 +159,40 @@ func TestDNSSECDeleteKey(t *testing.T) {
 	}
 }
 
+func TestDNSSECListKeysEmpty(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeEnvelope(t, w, http.StatusOK, []map[string]any{})
+	})
+
+	keys, _, err := client.DNSSEC.ListKeys(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("ListKeys: %v", err)
+	}
+	if keys == nil || len(keys) != 0 {
+		t.Errorf("keys = %v, want empty slice", keys)
+	}
+}
+
+func TestDNSSECGetKey(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/v2/zones/7/dnssec/keys/3" {
+			t.Errorf("request = %s %s, want GET /api/v2/zones/7/dnssec/keys/3", r.Method, r.URL.Path)
+		}
+		writeEnvelope(t, w, http.StatusOK, dnssecKeyJSON(3, true))
+	})
+
+	key, _, err := client.DNSSEC.GetKey(context.Background(), 7, 3)
+	if err != nil {
+		t.Fatalf("GetKey: %v", err)
+	}
+	if key.ID != 3 || key.Type != DNSSECKeyTypeCSK || key.KeyTag != 46395 || !key.Active {
+		t.Errorf("key = %+v", *key)
+	}
+	if key.DNSKey == nil || len(key.DS) != 1 {
+		t.Errorf("DNSKey/DS = %v/%v, want both set", key.DNSKey, key.DS)
+	}
+}
+
 func TestDNSSECGetKeyNotFound(t *testing.T) {
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		writeError(t, w, http.StatusNotFound, "DNSSEC key not found")
