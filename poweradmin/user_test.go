@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
 	"testing"
 )
@@ -94,6 +95,86 @@ func TestUserCreate(t *testing.T) {
 	}
 	if id != 42 {
 		t.Errorf("id = %d, want 42", id)
+	}
+}
+
+func TestUserCreateWithGroups(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		decodeBody(t, r, &body)
+		want := []any{float64(3), "dns-operators"}
+		if !reflect.DeepEqual(body["groups"], want) {
+			t.Errorf("groups = %#v, want %#v", body["groups"], want)
+		}
+		writeEnvelope(t, w, http.StatusCreated, map[string]any{
+			"user_id": 42,
+			"groups":  []map[string]any{{"id": 3, "name": "admins"}},
+		})
+	})
+	res, _, err := client.User.CreateWithResult(context.Background(), UserCreateOpts{
+		Username:   "charlie",
+		Password:   "secret",
+		Email:      "charlie@example.com",
+		GroupIDs:   []int{3},
+		GroupNames: []string{"dns-operators"},
+	})
+	if err != nil {
+		t.Fatalf("CreateWithResult: %v", err)
+	}
+	if res.UserID != 42 || len(res.Groups) != 1 || res.Groups[0] != (UserGroup{ID: 3, Name: "admins"}) {
+		t.Errorf("result = %+v", *res)
+	}
+}
+
+func TestUserCreateWithoutGroupsOmitsField(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		decodeBody(t, r, &body)
+		if _, ok := body["groups"]; ok {
+			t.Errorf("body has groups = %v, want the field omitted", body["groups"])
+		}
+		writeEnvelope(t, w, http.StatusCreated, map[string]any{"user_id": 42})
+	})
+	if _, _, err := client.User.Create(context.Background(), UserCreateOpts{Username: "charlie"}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+}
+
+func TestUserGetByIDGroupsAndTemplateName(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"user": map[string]any{
+			"user_id":         5,
+			"username":        "alice",
+			"perm_templ":      2,
+			"perm_templ_name": "Zone Manager",
+			"groups":          []map[string]any{{"id": 3, "name": "dns-operators"}, {"id": 4, "name": "ops"}},
+		}})
+	})
+	user, _, err := client.User.GetByID(context.Background(), 5)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if user.PermTemplName != "Zone Manager" {
+		t.Errorf("PermTemplName = %q", user.PermTemplName)
+	}
+	want := []UserGroup{{ID: 3, Name: "dns-operators"}, {ID: 4, Name: "ops"}}
+	if !reflect.DeepEqual(user.Groups, want) {
+		t.Errorf("Groups = %+v, want %+v", user.Groups, want)
+	}
+}
+
+func TestUserNullTemplateName(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"user": map[string]any{
+			"user_id": 5, "username": "alice", "perm_templ": nil, "perm_templ_name": nil, "groups": []any{},
+		}})
+	})
+	user, _, err := client.User.GetByID(context.Background(), 5)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if user.PermTempl != 0 || user.PermTemplName != "" || len(user.Groups) != 0 {
+		t.Errorf("user = %+v", *user)
 	}
 }
 

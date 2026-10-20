@@ -283,20 +283,30 @@ type RRSetUpsertRequest struct {
 
 // ── User ─────────────────────────────────────────────────────────────────────
 
+// User is a user as returned by the API. PermTemplName (null for users
+// without a template) and Groups are sent by Poweradmin 4.5+.
 type User struct {
-	UserID      int      `json:"user_id,omitempty"`
-	Username    string   `json:"username"`
-	Fullname    string   `json:"fullname"`
-	Email       string   `json:"email"`
-	Description string   `json:"description,omitempty"`
-	Active      bool     `json:"active"`
-	PermTempl   int      `json:"perm_templ,omitempty"`
-	UseLdap     bool     `json:"use_ldap,omitempty"`
-	IsAdmin     bool     `json:"is_admin,omitempty"`
-	Permissions []string `json:"permissions,omitempty"`
-	ZoneCount   int      `json:"zone_count,omitempty"`
-	CreatedAt   string   `json:"created_at,omitempty"`
-	UpdatedAt   string   `json:"updated_at,omitempty"`
+	UserID        int         `json:"user_id,omitempty"`
+	Username      string      `json:"username"`
+	Fullname      string      `json:"fullname"`
+	Email         string      `json:"email"`
+	Description   string      `json:"description,omitempty"`
+	Active        bool        `json:"active"`
+	PermTempl     int         `json:"perm_templ,omitempty"`
+	PermTemplName *string     `json:"perm_templ_name,omitempty"`
+	UseLdap       bool        `json:"use_ldap,omitempty"`
+	IsAdmin       bool        `json:"is_admin,omitempty"`
+	Permissions   []string    `json:"permissions,omitempty"`
+	ZoneCount     int         `json:"zone_count,omitempty"`
+	Groups        []UserGroup `json:"groups,omitempty"`
+	CreatedAt     string      `json:"created_at,omitempty"`
+	UpdatedAt     string      `json:"updated_at,omitempty"`
+}
+
+// UserGroup is a group membership as listed on a user (Poweradmin 4.5+).
+type UserGroup struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 type UserResponse struct {
@@ -310,6 +320,8 @@ type UserListResponse struct {
 
 type UserCreateResponse struct {
 	UserID int `json:"user_id"`
+	// Groups lists the memberships that were created (Poweradmin 4.5+).
+	Groups []UserGroup `json:"groups,omitempty"`
 }
 
 type UserCreateRequest struct {
@@ -321,6 +333,9 @@ type UserCreateRequest struct {
 	Active      bool   `json:"active"`
 	PermTempl   int    `json:"perm_templ,omitempty"`
 	UseLdap     bool   `json:"use_ldap,omitempty"`
+	// Groups holds group IDs (int) and exact group names (string), mixed
+	// freely (Poweradmin 4.5+).
+	Groups []any `json:"groups,omitempty"`
 }
 
 // UserUpdateRequest is sent via PUT /v2/users/{id}. Omitted fields keep their

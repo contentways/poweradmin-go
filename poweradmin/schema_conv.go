@@ -77,7 +77,7 @@ func RRSetFromSchema(s schema.RRSet) RRSet {
 }
 
 func UserFromSchema(s schema.User) User {
-	return User{
+	u := User{
 		ID:          s.UserID,
 		Username:    s.Username,
 		Fullname:    s.Fullname,
@@ -89,9 +89,25 @@ func UserFromSchema(s schema.User) User {
 		IsAdmin:     s.IsAdmin,
 		Permissions: s.Permissions,
 		ZoneCount:   s.ZoneCount,
+		Groups:      userGroupsFromSchema(s.Groups),
 		CreatedAt:   s.CreatedAt,
 		UpdatedAt:   s.UpdatedAt,
 	}
+	if s.PermTemplName != nil {
+		u.PermTemplName = *s.PermTemplName
+	}
+	return u
+}
+
+func userGroupsFromSchema(s []schema.UserGroup) []UserGroup {
+	if s == nil {
+		return nil
+	}
+	groups := make([]UserGroup, len(s))
+	for i, g := range s {
+		groups[i] = UserGroup{ID: g.ID, Name: g.Name}
+	}
+	return groups
 }
 
 func GroupFromSchema(s schema.Group) Group {
