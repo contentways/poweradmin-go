@@ -5,6 +5,7 @@ package poweradmin
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/contentways/poweradmin-go/v4/poweradmin/schema"
 )
@@ -53,6 +54,14 @@ type GroupUpdateOpts struct {
 	Description *string
 	// PermTemplID must reference a group-type permission template.
 	PermTemplID *int
+}
+
+// GroupDeleteOpts configures a group deletion request.
+type GroupDeleteOpts struct {
+	// Confirm deletes a group that still owns zones. Without it Poweradmin 4.5+
+	// refuses with 409, because those zones would be left without an owner.
+	// Memberships are removed either way. Older servers ignore the flag.
+	Confirm bool
 }
 
 // GroupClient provides access to the group-related Poweradmin API endpoints.
@@ -157,8 +166,21 @@ func (g *GroupClient) Update(ctx context.Context, id int, opts GroupUpdateOpts) 
 }
 
 // Delete deletes the [Group] with the given ID.
+//
+// Since Poweradmin 4.5 a group that still owns zones is refused with 409
+// ([IsConflict]); use [GroupClient.DeleteWithOpts] with Confirm to delete it
+// anyway.
 func (g *GroupClient) Delete(ctx context.Context, id int) (*Response, error) {
-	return g.client.delete(ctx, fmt.Sprintf("groups/%d", id))
+	return g.DeleteWithOpts(ctx, id, GroupDeleteOpts{})
+}
+
+// DeleteWithOpts deletes the [Group] with the given ID; see [GroupDeleteOpts].
+func (g *GroupClient) DeleteWithOpts(ctx context.Context, id int, opts GroupDeleteOpts) (*Response, error) {
+	v := url.Values{}
+	if opts.Confirm {
+		v.Set("confirm", "true")
+	}
+	return g.client.delete(ctx, appendQuery(fmt.Sprintf("groups/%d", id), v))
 }
 
 // Members returns the [GroupMember]s of a group.
