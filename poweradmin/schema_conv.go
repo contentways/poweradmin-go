@@ -46,6 +46,9 @@ func RecordFromSchema(s schema.Record) Record {
 		Priority: s.Priority,
 		Disabled: s.Disabled,
 		Auth:     s.Auth,
+
+		PTRCreated: s.PTRCreated,
+		PTRUpdated: s.PTRUpdated,
 	}
 }
 
@@ -60,6 +63,9 @@ func RecordToSchema(r Record) schema.Record {
 		Priority: r.Priority,
 		Disabled: r.Disabled,
 		Auth:     r.Auth,
+
+		PTRCreated: r.PTRCreated,
+		PTRUpdated: r.PTRUpdated,
 	}
 }
 

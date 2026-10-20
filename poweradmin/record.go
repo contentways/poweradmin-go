@@ -20,6 +20,15 @@ type Record struct {
 	Priority int
 	Disabled bool
 	Auth     bool // authoritative flag (managed by PowerDNS)
+
+	// PTRCreated reports whether [RecordCreateOpts.CreatePTR] created a PTR
+	// record; only set on the result of [RecordClient.CreateWithResult]
+	// (Poweradmin 4.5+).
+	PTRCreated bool
+	// PTRUpdated reports whether [RecordUpdateOpts.UpdatePTR] updated the
+	// matching PTR record; only set on the result of [RecordClient.Update]
+	// (Poweradmin 4.5+).
+	PTRUpdated bool
 }
 
 // RecordCreateOpts configures a record creation request.
@@ -42,6 +51,9 @@ type RecordUpdateOpts struct {
 	TTL      *int
 	Priority *int
 	Disabled *bool
+	// UpdatePTR keeps the matching PTR record in sync with an A or AAAA
+	// record (Poweradmin 4.5+); see [Record.PTRUpdated].
+	UpdatePTR bool
 }
 
 // BulkRecordOperation represents a single operation in a bulk records request.
@@ -130,6 +142,16 @@ func (r *RecordClient) All(ctx context.Context, zoneID int) ([]*Record, error) {
 
 // Create creates a new [Record] in the given zone and returns the new ID.
 func (r *RecordClient) Create(ctx context.Context, zoneID int, opts RecordCreateOpts) (string, *Response, error) {
+	rec, resp, err := r.CreateWithResult(ctx, zoneID, opts)
+	if err != nil {
+		return "", resp, err
+	}
+	return rec.ID, resp, nil
+}
+
+// CreateWithResult creates a new [Record] like [RecordClient.Create] and
+// returns the stored record, including [Record.PTRCreated].
+func (r *RecordClient) CreateWithResult(ctx context.Context, zoneID int, opts RecordCreateOpts) (*Record, *Response, error) {
 	req := schema.RecordCreateRequest{
 		Name:      opts.Name,
 		Type:      opts.Type,
@@ -142,20 +164,22 @@ func (r *RecordClient) Create(ctx context.Context, zoneID int, opts RecordCreate
 	var result schema.RecordResponse
 	resp, err := r.client.post(ctx, fmt.Sprintf("zones/%d/records", zoneID), req, &result)
 	if err != nil {
-		return "", resp, err
+		return nil, resp, err
 	}
-	return string(result.Record.ID), resp, nil
+	rec := RecordFromSchema(result.Record)
+	return &rec, resp, nil
 }
 
 // Update updates an existing [Record] and returns the updated state.
 func (r *RecordClient) Update(ctx context.Context, zoneID int, recordID string, opts RecordUpdateOpts) (*Record, *Response, error) {
 	req := schema.RecordUpdateRequest{
-		Name:     opts.Name,
-		Type:     opts.Type,
-		Content:  opts.Content,
-		TTL:      opts.TTL,
-		Priority: opts.Priority,
-		Disabled: opts.Disabled,
+		Name:      opts.Name,
+		Type:      opts.Type,
+		Content:   opts.Content,
+		TTL:       opts.TTL,
+		Priority:  opts.Priority,
+		Disabled:  opts.Disabled,
+		UpdatePTR: opts.UpdatePTR,
 	}
 	var result schema.RecordResponse
 	resp, err := r.client.put(ctx, fmt.Sprintf("zones/%d/records/%s", zoneID, recordID), req, &result)

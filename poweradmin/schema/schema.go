@@ -191,6 +191,10 @@ type Record struct {
 	Priority int      `json:"priority,omitempty"`
 	Disabled bool     `json:"disabled"`
 	Auth     bool     `json:"auth,omitempty"`
+	// PTRCreated and PTRUpdated are only sent in create and update
+	// responses (Poweradmin 4.5+).
+	PTRCreated bool `json:"ptr_created,omitempty"`
+	PTRUpdated bool `json:"ptr_updated,omitempty"`
 }
 
 // RecordResponse is used for both single-record GET and the POST create
@@ -223,6 +227,8 @@ type RecordUpdateRequest struct {
 	TTL      *int    `json:"ttl,omitempty"`
 	Priority *int    `json:"priority,omitempty"`
 	Disabled *bool   `json:"disabled,omitempty"`
+	// UpdatePTR syncs the matching PTR record (Poweradmin 4.5+).
+	UpdatePTR bool `json:"update_ptr,omitempty"`
 }
 
 type BulkRecordOperation struct {
