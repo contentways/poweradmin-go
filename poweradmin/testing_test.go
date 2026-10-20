@@ -80,6 +80,22 @@ func writeError(t *testing.T, w http.ResponseWriter, status int, message string)
 	}
 }
 
+// writeErrorWithData writes an error envelope that also carries data, as the
+// server status endpoint does for a 503 ({"running": false}).
+func writeErrorWithData(t *testing.T, w http.ResponseWriter, status int, message string, data any) {
+	t.Helper()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	payload := map[string]any{
+		"success": false,
+		"message": message,
+		"data":    data,
+	}
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		t.Fatalf("encode error envelope: %v", err)
+	}
+}
+
 // decodeBody decodes the JSON request body into v.
 func decodeBody(t *testing.T, r *http.Request, v any) {
 	t.Helper()

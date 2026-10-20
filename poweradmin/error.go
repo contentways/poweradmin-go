@@ -56,3 +56,15 @@ func newAPIError(status int, body []byte) *APIError {
 	}
 	return &APIError{StatusCode: status, Message: strings.TrimSpace(string(body))}
 }
+
+// IsServiceUnavailable reports whether err is a 503 Service Unavailable API
+// error, e.g. from [ServerClient.Status] when PowerDNS is not reachable.
+func IsServiceUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	if apiErr, ok := errors.AsType[*APIError](err); ok {
+		return apiErr.StatusCode == 503
+	}
+	return strings.Contains(err.Error(), "HTTP 503")
+}

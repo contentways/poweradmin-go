@@ -37,6 +37,7 @@ type Client struct {
 
 	// Per-resource clients
 	Zone               IZoneClient
+	DNSSEC             IDNSSECClient
 	ZoneTemplate       IZoneTemplateClient
 	Record             IRecordClient
 	RRSet              IRRSetClient
@@ -44,6 +45,7 @@ type Client struct {
 	Group              IGroupClient
 	Permission         IPermissionClient
 	PermissionTemplate IPermissionTemplateClient
+	Server             IServerClient
 }
 
 // NewClient creates a new Poweradmin API client.
@@ -78,6 +80,8 @@ func NewClient(opts ...Option) (*Client, error) {
 	c.Group = &GroupClient{client: c}
 	c.Permission = &PermissionClient{client: c}
 	c.PermissionTemplate = &PermissionTemplateClient{client: c}
+	c.DNSSEC = &DNSSECClient{client: c}
+	c.Server = &ServerClient{client: c}
 
 	return c, nil
 }

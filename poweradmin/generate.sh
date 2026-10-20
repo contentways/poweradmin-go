@@ -37,3 +37,9 @@ tool github.com/vburenin/ifacemaker \
 
 tool github.com/vburenin/ifacemaker \
     -f permission_template.go -s PermissionTemplateClient -i IPermissionTemplateClient -p poweradmin -o zz_permission_template_client_iface.go
+
+tool github.com/vburenin/ifacemaker \
+    -f dnssec.go     -s DNSSECClient     -i IDNSSECClient     -p poweradmin -o zz_dnssec_client_iface.go
+
+tool github.com/vburenin/ifacemaker \
+    -f server.go     -s ServerClient     -i IServerClient     -p poweradmin -o zz_server_client_iface.go
