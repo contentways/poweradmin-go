@@ -568,3 +568,22 @@ type SlaveStatus struct {
 	LastChecked *string `json:"last_checked"`
 	Error       *string `json:"error"`
 }
+
+// ── Dynamic DNS ──────────────────────────────────────────────────────────────
+
+// DynamicDNSUpdateRequest is sent via POST /v2/dynamic-dns (Poweradmin 4.5+).
+// IPv4 and IPv6 take a single address or a comma-separated list.
+type DynamicDNSUpdateRequest struct {
+	Hostname  string `json:"hostname"`
+	IPv4      string `json:"ipv4,omitempty"`
+	IPv6      string `json:"ipv6,omitempty"`
+	Dualstack bool   `json:"dualstack,omitempty"`
+}
+
+type DynamicDNSUpdateResponse struct {
+	Hostname    string   `json:"hostname"`
+	ZoneID      int      `json:"zone_id"`
+	AppliedIPv4 []string `json:"applied_ipv4"`
+	AppliedIPv6 []string `json:"applied_ipv6"`
+	Changed     bool     `json:"changed"`
+}

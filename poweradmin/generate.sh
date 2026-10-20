@@ -43,3 +43,6 @@ tool github.com/vburenin/ifacemaker \
 
 tool github.com/vburenin/ifacemaker \
     -f server.go     -s ServerClient     -i IServerClient     -p poweradmin -o zz_server_client_iface.go
+
+tool github.com/vburenin/ifacemaker \
+    -f dynamic_dns.go -s DynamicDNSClient -i IDynamicDNSClient -p poweradmin -o zz_dynamic_dns_client_iface.go

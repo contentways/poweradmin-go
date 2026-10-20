@@ -100,3 +100,21 @@ func TestNewAPIError(t *testing.T) {
 		})
 	}
 }
+
+func TestIsConflict(t *testing.T) {
+	if !IsConflict(&APIError{StatusCode: 409, Message: "conflict"}) {
+		t.Error("IsConflict(409) = false, want true")
+	}
+	if IsConflict(&APIError{StatusCode: 404, Message: "not found"}) {
+		t.Error("IsConflict(404) = true, want false")
+	}
+	if !IsConflict(fmt.Errorf("wrapped: %w", &APIError{StatusCode: 409})) {
+		t.Error("IsConflict(wrapped 409) = false, want true")
+	}
+	if IsConflict(nil) {
+		t.Error("IsConflict(nil) = true, want false")
+	}
+	if IsConflict(errors.New("boom")) {
+		t.Error("IsConflict(plain error) = true, want false")
+	}
+}

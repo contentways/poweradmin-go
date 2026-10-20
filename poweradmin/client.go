@@ -46,6 +46,7 @@ type Client struct {
 	Permission         IPermissionClient
 	PermissionTemplate IPermissionTemplateClient
 	Server             IServerClient
+	DynamicDNS         IDynamicDNSClient
 }
 
 // NewClient creates a new Poweradmin API client.
@@ -82,6 +83,7 @@ func NewClient(opts ...Option) (*Client, error) {
 	c.PermissionTemplate = &PermissionTemplateClient{client: c}
 	c.DNSSEC = &DNSSECClient{client: c}
 	c.Server = &ServerClient{client: c}
+	c.DynamicDNS = &DynamicDNSClient{client: c}
 
 	return c, nil
 }
