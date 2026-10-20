@@ -87,6 +87,9 @@ type ZoneCreateRequest struct {
 	// OwnerUserIDValue to build it.
 	OwnerUserID json.RawMessage `json:"owner_user_id,omitempty"`
 	GroupIDs    []int           `json:"group_ids,omitempty"`
+	// SOAEditAPI is the SOA-EDIT-API policy (Poweradmin 4.5+); empty applies
+	// the server default.
+	SOAEditAPI string `json:"soa_edit_api,omitempty"`
 }
 
 // OwnerUserIDNull is the explicit JSON null for [ZoneCreateRequest.OwnerUserID].

@@ -58,7 +58,18 @@ type ZoneCreateOpts struct {
 	WithoutUserOwner bool
 	// GroupIDs assigns groups as zone owners.
 	GroupIDs []int
+	// SOAEditAPI sets the zone's SOA-EDIT-API serial policy (Poweradmin
+	// 4.5+): DEFAULT, INCREASE, EPOCH, SOA-EDIT or SOA-EDIT-INCREASE, or
+	// [SOAEditAPIOff] to disable it for this zone. Empty applies the server's
+	// dns.soa_edit_api default. Values the server does not offer are rejected
+	// with 400; SLAVE zones accept the value but take their serial from the
+	// primary.
+	SOAEditAPI string
 }
+
+// SOAEditAPIOff disables the SOA-EDIT-API policy for a zone in
+// [ZoneCreateOpts.SOAEditAPI].
+const SOAEditAPIOff = "OFF"
 
 // ZoneUpdateOpts configures a zone update request.
 // Only non-nil pointer fields are sent to the API.
@@ -200,6 +211,7 @@ func (z *ZoneClient) Create(ctx context.Context, opts ZoneCreateOpts) (int, *Res
 		Template:     opts.TemplateID,
 		EnableDNSSEC: opts.EnableDNSSEC,
 		GroupIDs:     opts.GroupIDs,
+		SOAEditAPI:   opts.SOAEditAPI,
 	}
 	switch {
 	case opts.WithoutUserOwner:
