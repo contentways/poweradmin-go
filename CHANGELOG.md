@@ -1,5 +1,12 @@
 # Changelog
 
+## [v4.1.0](https://github.com/contentways/poweradmin-go/releases/tag/v4.1.0)
+
+### Features
+
+- add DNSSEC key management and server status clients
+- **dnssec**: support active flag on key creation and DNSKEY/DS per key
+
 ## [v4.0.0](https://github.com/contentways/poweradmin-go/releases/tag/v4.0.0)
 
 ### Features
