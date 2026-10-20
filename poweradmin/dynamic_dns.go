@@ -43,7 +43,9 @@ type DynamicDNSClient struct {
 //
 // Requires Poweradmin 4.5 or later and the zone_content_edit_own (or
 // zone_content_edit_own_as_client) permission; only zones the user owns are
-// considered. A scoped API key needs the create and update operations, and
+// considered. Unlike other endpoints, user_is_ueberuser alone is not enough:
+// Poweradmin 4.5.0 answers 403 for an administrator without one of these
+// permissions. A scoped API key needs the create and update operations, and
 // delete as well when the update removes records. The server answers 404 when
 // no owned zone contains the hostname, 403 for secondary and consumer zones,
 // and 409 when the update would change nothing and no matching records exist
