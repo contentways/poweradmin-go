@@ -56,6 +56,14 @@ type RecordUpdateOpts struct {
 	UpdatePTR bool
 }
 
+// BulkRecordsOpts configures a bulk records request.
+type BulkRecordsOpts struct {
+	// Comment is the reason for the change, recorded in the change log
+	// (Poweradmin 4.5+). Servers with logging.require_change_comment refuse
+	// a bulk request without it with 400.
+	Comment string
+}
+
 // BulkRecordOperation represents a single operation in a bulk records request.
 // Action is one of "create", "update", "delete". RecordID is required for
 // update/delete; Name/Type/Content are required for create.
@@ -197,6 +205,11 @@ func (r *RecordClient) Delete(ctx context.Context, zoneID int, recordID string) 
 
 // Bulk executes multiple record operations atomically against the given zone.
 func (r *RecordClient) Bulk(ctx context.Context, zoneID int, ops []BulkRecordOperation) (*BulkRecordsResult, *Response, error) {
+	return r.BulkWithOpts(ctx, zoneID, ops, BulkRecordsOpts{})
+}
+
+// BulkWithOpts is [RecordClient.Bulk] with a change comment; see [BulkRecordsOpts].
+func (r *RecordClient) BulkWithOpts(ctx context.Context, zoneID int, ops []BulkRecordOperation, opts BulkRecordsOpts) (*BulkRecordsResult, *Response, error) {
 	schemaOps := make([]schema.BulkRecordOperation, len(ops))
 	for i, op := range ops {
 		schemaOps[i] = schema.BulkRecordOperation{
@@ -210,7 +223,7 @@ func (r *RecordClient) Bulk(ctx context.Context, zoneID int, ops []BulkRecordOpe
 			Disabled: op.Disabled,
 		}
 	}
-	req := schema.BulkRecordsRequest{Operations: schemaOps}
+	req := schema.BulkRecordsRequest{Operations: schemaOps, Comment: opts.Comment}
 	var result schema.BulkRecordsResponse
 	resp, err := r.client.post(ctx, fmt.Sprintf("zones/%d/records/bulk", zoneID), req, &result)
 	if err != nil {

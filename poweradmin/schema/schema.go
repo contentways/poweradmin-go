@@ -244,6 +244,8 @@ type BulkRecordOperation struct {
 
 type BulkRecordsRequest struct {
 	Operations []BulkRecordOperation `json:"operations"`
+	// Comment is the change reason (Poweradmin 4.5+).
+	Comment string `json:"comment,omitempty"`
 }
 
 type BulkRecordsResponse struct {

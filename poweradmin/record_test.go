@@ -116,6 +116,37 @@ func TestRecordBulk(t *testing.T) {
 	}
 }
 
+func TestRecordBulkWithComment(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		decodeBody(t, r, &body)
+		if body["comment"] != "ticket-4821" {
+			t.Errorf("comment = %v, want ticket-4821", body["comment"])
+		}
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"created": 0, "updated": 0, "deleted": 1, "failed": 0})
+	})
+	_, _, err := client.Record.BulkWithOpts(context.Background(), 5,
+		[]BulkRecordOperation{{Action: "delete", RecordID: "rec-99"}},
+		BulkRecordsOpts{Comment: "ticket-4821"})
+	if err != nil {
+		t.Fatalf("BulkWithOpts: %v", err)
+	}
+}
+
+func TestRecordBulkWithoutCommentOmitsField(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		decodeBody(t, r, &body)
+		if _, ok := body["comment"]; ok {
+			t.Errorf("body has comment = %v, want the field omitted", body["comment"])
+		}
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"created": 0, "updated": 0, "deleted": 1, "failed": 0})
+	})
+	if _, _, err := client.Record.Bulk(context.Background(), 5, []BulkRecordOperation{{Action: "delete", RecordID: "rec-99"}}); err != nil {
+		t.Fatalf("Bulk: %v", err)
+	}
+}
+
 func TestRecordCreateWithResultReportsPTR(t *testing.T) {
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any

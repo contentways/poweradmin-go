@@ -26,4 +26,6 @@ type IRecordClient interface {
 	Delete(ctx context.Context, zoneID int, recordID string) (*Response, error)
 	// Bulk executes multiple record operations atomically against the given zone.
 	Bulk(ctx context.Context, zoneID int, ops []BulkRecordOperation) (*BulkRecordsResult, *Response, error)
+	// BulkWithOpts is [RecordClient.Bulk] with a change comment; see [BulkRecordsOpts].
+	BulkWithOpts(ctx context.Context, zoneID int, ops []BulkRecordOperation, opts BulkRecordsOpts) (*BulkRecordsResult, *Response, error)
 }
