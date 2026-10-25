@@ -1,5 +1,16 @@
 # Changelog
 
+## [v4.2.0](https://github.com/contentways/poweradmin-go/releases/tag/v4.2.0)
+
+### Features
+
+- **dynamic-dns**: add a client for POST /v2/dynamic-dns
+- **groups**: confirm deleting a group that still owns zones
+- **users**: assign groups on creation and read memberships
+- **zones**: set the SOA-EDIT-API policy when creating a zone
+- **records**: sync PTR records on update and report PTR changes
+- **records**: send a change comment with bulk record operations
+
 ## [v4.1.0](https://github.com/contentways/poweradmin-go/releases/tag/v4.1.0)
 
 ### Features
