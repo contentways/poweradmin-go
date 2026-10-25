@@ -188,6 +188,11 @@ func TestZoneCreateWireFields(t *testing.T) {
 			},
 		},
 		{
+			name: "soa-edit-api policy",
+			opts: ZoneCreateOpts{Name: "example.com", Type: ZoneTypeMaster, SOAEditAPI: SOAEditAPIOff},
+			want: map[string]any{"name": "example.com", "type": "MASTER", "soa_edit_api": "OFF"},
+		},
+		{
 			name: "group-only zone sends explicit null owner",
 			opts: ZoneCreateOpts{Name: "example.net", Type: ZoneTypeNative, WithoutUserOwner: true, GroupIDs: []int{2}},
 			want: map[string]any{

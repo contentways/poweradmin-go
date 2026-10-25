@@ -87,6 +87,9 @@ type ZoneCreateRequest struct {
 	// OwnerUserIDValue to build it.
 	OwnerUserID json.RawMessage `json:"owner_user_id,omitempty"`
 	GroupIDs    []int           `json:"group_ids,omitempty"`
+	// SOAEditAPI is the SOA-EDIT-API policy (Poweradmin 4.5+); empty applies
+	// the server default.
+	SOAEditAPI string `json:"soa_edit_api,omitempty"`
 }
 
 // OwnerUserIDNull is the explicit JSON null for [ZoneCreateRequest.OwnerUserID].
@@ -188,6 +191,10 @@ type Record struct {
 	Priority int      `json:"priority,omitempty"`
 	Disabled bool     `json:"disabled"`
 	Auth     bool     `json:"auth,omitempty"`
+	// PTRCreated and PTRUpdated are only sent in create and update
+	// responses (Poweradmin 4.5+).
+	PTRCreated bool `json:"ptr_created,omitempty"`
+	PTRUpdated bool `json:"ptr_updated,omitempty"`
 }
 
 // RecordResponse is used for both single-record GET and the POST create
@@ -220,6 +227,8 @@ type RecordUpdateRequest struct {
 	TTL      *int    `json:"ttl,omitempty"`
 	Priority *int    `json:"priority,omitempty"`
 	Disabled *bool   `json:"disabled,omitempty"`
+	// UpdatePTR syncs the matching PTR record (Poweradmin 4.5+).
+	UpdatePTR bool `json:"update_ptr,omitempty"`
 }
 
 type BulkRecordOperation struct {
@@ -235,6 +244,8 @@ type BulkRecordOperation struct {
 
 type BulkRecordsRequest struct {
 	Operations []BulkRecordOperation `json:"operations"`
+	// Comment is the change reason (Poweradmin 4.5+).
+	Comment string `json:"comment,omitempty"`
 }
 
 type BulkRecordsResponse struct {
@@ -283,20 +294,30 @@ type RRSetUpsertRequest struct {
 
 // ── User ─────────────────────────────────────────────────────────────────────
 
+// User is a user as returned by the API. PermTemplName (null for users
+// without a template) and Groups are sent by Poweradmin 4.5+.
 type User struct {
-	UserID      int      `json:"user_id,omitempty"`
-	Username    string   `json:"username"`
-	Fullname    string   `json:"fullname"`
-	Email       string   `json:"email"`
-	Description string   `json:"description,omitempty"`
-	Active      bool     `json:"active"`
-	PermTempl   int      `json:"perm_templ,omitempty"`
-	UseLdap     bool     `json:"use_ldap,omitempty"`
-	IsAdmin     bool     `json:"is_admin,omitempty"`
-	Permissions []string `json:"permissions,omitempty"`
-	ZoneCount   int      `json:"zone_count,omitempty"`
-	CreatedAt   string   `json:"created_at,omitempty"`
-	UpdatedAt   string   `json:"updated_at,omitempty"`
+	UserID        int         `json:"user_id,omitempty"`
+	Username      string      `json:"username"`
+	Fullname      string      `json:"fullname"`
+	Email         string      `json:"email"`
+	Description   string      `json:"description,omitempty"`
+	Active        bool        `json:"active"`
+	PermTempl     int         `json:"perm_templ,omitempty"`
+	PermTemplName *string     `json:"perm_templ_name,omitempty"`
+	UseLdap       bool        `json:"use_ldap,omitempty"`
+	IsAdmin       bool        `json:"is_admin,omitempty"`
+	Permissions   []string    `json:"permissions,omitempty"`
+	ZoneCount     int         `json:"zone_count,omitempty"`
+	Groups        []UserGroup `json:"groups,omitempty"`
+	CreatedAt     string      `json:"created_at,omitempty"`
+	UpdatedAt     string      `json:"updated_at,omitempty"`
+}
+
+// UserGroup is a group membership as listed on a user (Poweradmin 4.5+).
+type UserGroup struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 type UserResponse struct {
@@ -310,6 +331,8 @@ type UserListResponse struct {
 
 type UserCreateResponse struct {
 	UserID int `json:"user_id"`
+	// Groups lists the memberships that were created (Poweradmin 4.5+).
+	Groups []UserGroup `json:"groups,omitempty"`
 }
 
 type UserCreateRequest struct {
@@ -321,6 +344,9 @@ type UserCreateRequest struct {
 	Active      bool   `json:"active"`
 	PermTempl   int    `json:"perm_templ,omitempty"`
 	UseLdap     bool   `json:"use_ldap,omitempty"`
+	// Groups holds group IDs (int) and exact group names (string), mixed
+	// freely (Poweradmin 4.5+).
+	Groups []any `json:"groups,omitempty"`
 }
 
 // UserUpdateRequest is sent via PUT /v2/users/{id}. Omitted fields keep their
@@ -567,4 +593,23 @@ type SlaveStatus struct {
 	Status      string  `json:"status"`
 	LastChecked *string `json:"last_checked"`
 	Error       *string `json:"error"`
+}
+
+// ── Dynamic DNS ──────────────────────────────────────────────────────────────
+
+// DynamicDNSUpdateRequest is sent via POST /v2/dynamic-dns (Poweradmin 4.5+).
+// IPv4 and IPv6 take a single address or a comma-separated list.
+type DynamicDNSUpdateRequest struct {
+	Hostname  string `json:"hostname"`
+	IPv4      string `json:"ipv4,omitempty"`
+	IPv6      string `json:"ipv6,omitempty"`
+	Dualstack bool   `json:"dualstack,omitempty"`
+}
+
+type DynamicDNSUpdateResponse struct {
+	Hostname    string   `json:"hostname"`
+	ZoneID      int      `json:"zone_id"`
+	AppliedIPv4 []string `json:"applied_ipv4"`
+	AppliedIPv6 []string `json:"applied_ipv6"`
+	Changed     bool     `json:"changed"`
 }

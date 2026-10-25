@@ -25,6 +25,17 @@ type User struct {
 	ZoneCount   int
 	CreatedAt   string
 	UpdatedAt   string
+
+	// PermTemplName is the name of PermTempl (Poweradmin 4.5+).
+	PermTemplName string
+	// Groups lists the user's group memberships (Poweradmin 4.5+).
+	Groups []UserGroup
+}
+
+// UserGroup is a group a [User] belongs to.
+type UserGroup struct {
+	ID   int
+	Name string
 }
 
 // UserCreateOpts configures a user creation request.
@@ -37,6 +48,21 @@ type UserCreateOpts struct {
 	Active      bool
 	PermTempl   int
 	UseLdap     bool
+	// GroupIDs and GroupNames add the new user to these groups (Poweradmin
+	// 4.5+). Names must match exactly, including case. Assigning groups needs
+	// the user_is_ueberuser permission; without it the whole request fails
+	// with 403. At most 50 groups in total.
+	GroupIDs   []int
+	GroupNames []string
+}
+
+// UserCreateResult is the outcome of [UserClient.CreateWithResult].
+type UserCreateResult struct {
+	UserID int
+	// Groups lists the memberships that were actually created. The user is
+	// created even if adding it to a group fails, so this can be shorter
+	// than the requested groups.
+	Groups []UserGroup
 }
 
 // UserUpdateOpts configures a user update request.
@@ -141,6 +167,16 @@ func (u *UserClient) All(ctx context.Context) ([]*User, error) {
 
 // Create creates a new [User] and returns the new ID.
 func (u *UserClient) Create(ctx context.Context, opts UserCreateOpts) (int, *Response, error) {
+	result, resp, err := u.CreateWithResult(ctx, opts)
+	if err != nil {
+		return 0, resp, err
+	}
+	return result.UserID, resp, nil
+}
+
+// CreateWithResult creates a new [User] like [UserClient.Create] and also
+// returns the group memberships that were created.
+func (u *UserClient) CreateWithResult(ctx context.Context, opts UserCreateOpts) (*UserCreateResult, *Response, error) {
 	req := schema.UserCreateRequest{
 		Username:    opts.Username,
 		Password:    opts.Password,
@@ -151,12 +187,21 @@ func (u *UserClient) Create(ctx context.Context, opts UserCreateOpts) (int, *Res
 		PermTempl:   opts.PermTempl,
 		UseLdap:     opts.UseLdap,
 	}
+	for _, id := range opts.GroupIDs {
+		req.Groups = append(req.Groups, id)
+	}
+	for _, name := range opts.GroupNames {
+		req.Groups = append(req.Groups, name)
+	}
 	var result schema.UserCreateResponse
 	resp, err := u.client.post(ctx, "users", req, &result)
 	if err != nil {
-		return 0, resp, err
+		return nil, resp, err
 	}
-	return result.UserID, resp, nil
+	return &UserCreateResult{
+		UserID: result.UserID,
+		Groups: userGroupsFromSchema(result.Groups),
+	}, resp, nil
 }
 
 // Update updates an existing [User] and returns the updated state.

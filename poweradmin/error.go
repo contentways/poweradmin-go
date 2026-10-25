@@ -68,3 +68,16 @@ func IsServiceUnavailable(err error) bool {
 	}
 	return strings.Contains(err.Error(), "HTTP 503")
 }
+
+// IsConflict reports whether err is a 409 Conflict API error, e.g. from
+// [GroupClient.Delete] for a group that still owns zones or from
+// [DynamicDNSClient.Update] when no matching records exist.
+func IsConflict(err error) bool {
+	if err == nil {
+		return false
+	}
+	if apiErr, ok := errors.AsType[*APIError](err); ok {
+		return apiErr.StatusCode == 409
+	}
+	return strings.Contains(err.Error(), "HTTP 409")
+}

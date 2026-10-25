@@ -146,6 +146,7 @@ The client exposes the Poweradmin API resources as services on the client:
 | `client.PermissionTemplate`   | `/v2/permission-templates`        |
 | `client.DNSSEC`               | `/v2/zones/{id}/dnssec/...` (4.5+) |
 | `client.Server`               | `/v2/server/status` (4.5+)        |
+| `client.DynamicDNS`           | `/v2/dynamic-dns` (4.5+)          |
 
 Each list endpoint provides:
 
@@ -220,6 +221,44 @@ fails with 403.
 
 For monitoring, consider a client without `WithRetry`: the call is a GET, so
 a 503 would otherwise be retried before it is reported.
+
+## Dynamic DNS
+
+`client.DynamicDNS.Update` sets the A and AAAA records of a hostname, the way
+a dynamic DNS client does (4.5+). The hostname must lie in a zone the user
+owns, and the user needs `zone_content_edit_own` or
+`zone_content_edit_own_as_client`; `user_is_ueberuser` alone is refused with
+403:
+
+```go
+res, _, err := client.DynamicDNS.Update(ctx, poweradmin.DynamicDNSUpdateOpts{
+    Hostname:  "home.example.com",
+    IPv4:      []string{"198.51.100.7"},
+    Dualstack: true, // also remove the AAAA records
+})
+if err == nil && !res.Changed {
+    // the records already had these addresses
+}
+```
+
+A scoped API key needs the create and update operations, plus delete when the
+update removes records. Unknown hostnames answer 404 (`IsNotFound`).
+
+## Poweradmin 4.5 additions
+
+Besides the new resources above, 4.5 added these options. Older servers ignore
+the new request fields and leave the new result fields empty.
+
+| SDK                                                     | Purpose |
+| ------------------------------------------------------- | ------- |
+| `ZoneCreateOpts.SOAEditAPI`                             | SOA-EDIT-API policy of a new zone (`SOAEditAPIOff` disables it) |
+| `RecordClient.CreateWithResult`, `Record.PTRCreated`    | stored record and whether `CreatePTR` created a PTR record |
+| `RecordUpdateOpts.UpdatePTR`, `Record.PTRUpdated`       | keep the PTR record in sync when an A/AAAA record changes |
+| `RecordClient.BulkWithOpts`, `BulkRecordsOpts.Comment`  | change reason; required when the server sets `logging.require_change_comment` |
+| `UserCreateOpts.GroupIDs`, `GroupNames`                 | add a new user to groups (needs `user_is_ueberuser`) |
+| `UserClient.CreateWithResult`                           | the group memberships that were actually created |
+| `User.Groups`, `User.PermTemplName`                     | memberships and template name in user responses |
+| `GroupClient.DeleteWithOpts`, `GroupDeleteOpts.Confirm` | delete a group that still owns zones; without it 4.5 answers 409 (`IsConflict`) |
 
 ## Pagination
 

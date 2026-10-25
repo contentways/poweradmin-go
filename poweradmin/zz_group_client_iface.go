@@ -22,7 +22,13 @@ type IGroupClient interface {
 	// Update updates an existing [Group] and returns the updated state.
 	Update(ctx context.Context, id int, opts GroupUpdateOpts) (*Group, *Response, error)
 	// Delete deletes the [Group] with the given ID.
+	//
+	// Since Poweradmin 4.5 a group that still owns zones is refused with 409
+	// ([IsConflict]); use [GroupClient.DeleteWithOpts] with Confirm to delete it
+	// anyway.
 	Delete(ctx context.Context, id int) (*Response, error)
+	// DeleteWithOpts deletes the [Group] with the given ID; see [GroupDeleteOpts].
+	DeleteWithOpts(ctx context.Context, id int, opts GroupDeleteOpts) (*Response, error)
 	// Members returns the [GroupMember]s of a group.
 	Members(ctx context.Context, id int) ([]*GroupMember, *Response, error)
 	// AddMember adds a user to a group.

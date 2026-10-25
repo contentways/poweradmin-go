@@ -160,6 +160,34 @@ func TestGroupDelete(t *testing.T) {
 	}
 }
 
+func TestGroupDeleteWithConfirm(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/api/v2/groups/3" {
+			t.Errorf("method/path = %s %s", r.Method, r.URL.Path)
+		}
+		if got := r.URL.Query().Get("confirm"); got != "true" {
+			t.Errorf("confirm = %q, want true", got)
+		}
+		writeEnvelope(t, w, http.StatusOK, nil)
+	})
+	if _, err := client.Group.DeleteWithOpts(context.Background(), 3, GroupDeleteOpts{Confirm: true}); err != nil {
+		t.Fatalf("DeleteWithOpts: %v", err)
+	}
+}
+
+func TestGroupDeleteOwningZonesConflicts(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.RawQuery != "" {
+			t.Errorf("query = %q, want none without Confirm", r.URL.RawQuery)
+		}
+		writeError(t, w, http.StatusConflict, "Group still owns 2 zone(s). Deleting it leaves them without an owner. Repeat with confirm=true to proceed.")
+	})
+	_, err := client.Group.Delete(context.Background(), 3)
+	if !IsConflict(err) {
+		t.Fatalf("err = %v, want a 409 conflict", err)
+	}
+}
+
 func TestGroupZones(t *testing.T) {
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet || r.URL.Path != "/api/v2/groups/3/zones" {

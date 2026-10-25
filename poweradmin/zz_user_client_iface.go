@@ -23,6 +23,9 @@ type IUserClient interface {
 	All(ctx context.Context) ([]*User, error)
 	// Create creates a new [User] and returns the new ID.
 	Create(ctx context.Context, opts UserCreateOpts) (int, *Response, error)
+	// CreateWithResult creates a new [User] like [UserClient.Create] and also
+	// returns the group memberships that were created.
+	CreateWithResult(ctx context.Context, opts UserCreateOpts) (*UserCreateResult, *Response, error)
 	// Update updates an existing [User] and returns the updated state.
 	//
 	// The update endpoint only returns the user ID, so Update reads the user back

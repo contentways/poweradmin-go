@@ -116,6 +116,81 @@ func TestRecordBulk(t *testing.T) {
 	}
 }
 
+func TestRecordBulkWithComment(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		decodeBody(t, r, &body)
+		if body["comment"] != "ticket-4821" {
+			t.Errorf("comment = %v, want ticket-4821", body["comment"])
+		}
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"created": 0, "updated": 0, "deleted": 1, "failed": 0})
+	})
+	_, _, err := client.Record.BulkWithOpts(context.Background(), 5,
+		[]BulkRecordOperation{{Action: "delete", RecordID: "rec-99"}},
+		BulkRecordsOpts{Comment: "ticket-4821"})
+	if err != nil {
+		t.Fatalf("BulkWithOpts: %v", err)
+	}
+}
+
+func TestRecordBulkWithoutCommentOmitsField(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		decodeBody(t, r, &body)
+		if _, ok := body["comment"]; ok {
+			t.Errorf("body has comment = %v, want the field omitted", body["comment"])
+		}
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"created": 0, "updated": 0, "deleted": 1, "failed": 0})
+	})
+	if _, _, err := client.Record.Bulk(context.Background(), 5, []BulkRecordOperation{{Action: "delete", RecordID: "rec-99"}}); err != nil {
+		t.Fatalf("Bulk: %v", err)
+	}
+}
+
+func TestRecordCreateWithResultReportsPTR(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		decodeBody(t, r, &body)
+		if body["create_ptr"] != true {
+			t.Errorf("create_ptr = %v, want true", body["create_ptr"])
+		}
+		writeEnvelope(t, w, http.StatusCreated, map[string]any{"record": map[string]any{
+			"id": 812, "zone_id": 5, "name": "www", "type": "A", "content": "192.0.2.10",
+			"ttl": 3600, "priority": 0, "disabled": false, "auth": true, "ptr_created": true,
+		}})
+	})
+	rec, _, err := client.Record.CreateWithResult(context.Background(), 5, RecordCreateOpts{
+		Name: "www", Type: "A", Content: "192.0.2.10", TTL: 3600, CreatePTR: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateWithResult: %v", err)
+	}
+	if rec.ID != "812" || rec.ZoneID != 5 || rec.Content != "192.0.2.10" || !rec.PTRCreated {
+		t.Errorf("record = %+v", *rec)
+	}
+}
+
+func TestRecordUpdatePTR(t *testing.T) {
+	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		decodeBody(t, r, &body)
+		if body["update_ptr"] != true {
+			t.Errorf("update_ptr = %v, want true", body["update_ptr"])
+		}
+		writeEnvelope(t, w, http.StatusOK, map[string]any{"record": map[string]any{
+			"id": 813, "zone_id": 5, "name": "www", "type": "A", "content": "192.0.2.11",
+			"ttl": 3600, "disabled": false, "auth": true, "ptr_updated": true,
+		}})
+	})
+	rec, _, err := client.Record.Update(context.Background(), 5, "812", RecordUpdateOpts{Content: new("192.0.2.11"), UpdatePTR: true})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if rec.ID != "813" || !rec.PTRUpdated {
+		t.Errorf("record = %+v", *rec)
+	}
+}
+
 func TestRecordGetByID(t *testing.T) {
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet || r.URL.Path != "/api/v2/zones/5/records/rec-99" {

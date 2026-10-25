@@ -17,10 +17,15 @@ type IRecordClient interface {
 	All(ctx context.Context, zoneID int) ([]*Record, error)
 	// Create creates a new [Record] in the given zone and returns the new ID.
 	Create(ctx context.Context, zoneID int, opts RecordCreateOpts) (string, *Response, error)
+	// CreateWithResult creates a new [Record] like [RecordClient.Create] and
+	// returns the stored record, including [Record.PTRCreated].
+	CreateWithResult(ctx context.Context, zoneID int, opts RecordCreateOpts) (*Record, *Response, error)
 	// Update updates an existing [Record] and returns the updated state.
 	Update(ctx context.Context, zoneID int, recordID string, opts RecordUpdateOpts) (*Record, *Response, error)
 	// Delete deletes the [Record] with the given ID.
 	Delete(ctx context.Context, zoneID int, recordID string) (*Response, error)
 	// Bulk executes multiple record operations atomically against the given zone.
 	Bulk(ctx context.Context, zoneID int, ops []BulkRecordOperation) (*BulkRecordsResult, *Response, error)
+	// BulkWithOpts is [RecordClient.Bulk] with a change comment; see [BulkRecordsOpts].
+	BulkWithOpts(ctx context.Context, zoneID int, ops []BulkRecordOperation, opts BulkRecordsOpts) (*BulkRecordsResult, *Response, error)
 }
